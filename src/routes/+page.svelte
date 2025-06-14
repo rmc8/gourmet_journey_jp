@@ -37,6 +37,19 @@
   let titleClickCount = $state(0);
   let titleClickTimer: number | null = null;
 
+  // 地図ズーム機能
+  let mapContainer: HTMLDivElement;
+  let mapZoom = $state(1);
+  let mapPanX = $state(0);
+  let mapPanY = $state(0);
+  
+  // 地図ドラッグ機能
+  let isDragging = $state(false);
+  let dragStartX = $state(0);
+  let dragStartY = $state(0);
+  let lastPanX = $state(0);
+  let lastPanY = $state(0);
+
   /**
    * Firestore から都道府県別統計を取得してヒートマップデータを更新
    */
@@ -143,6 +156,97 @@
     }
   }
 
+  /**
+   * 地図ズーム・移動機能
+   */
+  function updateMapTransform() {
+    if (mapContainer) {
+      const japanMap = mapContainer.querySelector('.japan-map-container');
+      if (japanMap) {
+        (japanMap as HTMLElement).style.transform = 
+          `scale(${mapZoom}) translate(${mapPanX}px, ${mapPanY}px)`;
+      }
+    }
+  }
+
+  function handleZoomIn() {
+    mapZoom = Math.min(mapZoom * 1.2, 3);
+    updateMapTransform();
+  }
+
+  function handleZoomOut() {
+    mapZoom = Math.max(mapZoom / 1.2, 0.5);
+    updateMapTransform();
+  }
+
+  function handleZoomReset() {
+    mapZoom = 1;
+    mapPanX = 0;
+    mapPanY = 0;
+    lastPanX = 0;
+    lastPanY = 0;
+    updateMapTransform();
+  }
+
+  /**
+   * 地図ドラッグ機能（マウス・タッチ対応）
+   */
+  function handleMapMouseDown(event: MouseEvent) {
+    if (mapZoom <= 1) return; // ズームしていない時はドラッグ無効
+    
+    isDragging = true;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    lastPanX = mapPanX;
+    lastPanY = mapPanY;
+  }
+
+  function handleMapTouchStart(event: TouchEvent) {
+    if (mapZoom <= 1) return; // ズームしていない時はドラッグ無効
+    event.preventDefault(); // スクロール防止
+    
+    const touch = event.touches[0];
+    isDragging = true;
+    dragStartX = touch.clientX;
+    dragStartY = touch.clientY;
+    lastPanX = mapPanX;
+    lastPanY = mapPanY;
+  }
+
+  function handleMapMouseMove(event: MouseEvent) {
+    if (!isDragging) return;
+    
+    const deltaX = (event.clientX - dragStartX) / mapZoom;
+    const deltaY = (event.clientY - dragStartY) / mapZoom;
+    
+    mapPanX = lastPanX + deltaX;
+    mapPanY = lastPanY + deltaY;
+    
+    updateMapTransform();
+  }
+
+  function handleMapTouchMove(event: TouchEvent) {
+    if (!isDragging) return;
+    event.preventDefault(); // スクロール防止
+    
+    const touch = event.touches[0];
+    const deltaX = (touch.clientX - dragStartX) / mapZoom;
+    const deltaY = (touch.clientY - dragStartY) / mapZoom;
+    
+    mapPanX = lastPanX + deltaX;
+    mapPanY = lastPanY + deltaY;
+    
+    updateMapTransform();
+  }
+
+  function handleMapMouseUp() {
+    isDragging = false;
+  }
+
+  function handleMapTouchEnd() {
+    isDragging = false;
+  }
+
   // アプリ起動時の初期化
   onMount(() => {
     // 統計データ読み込み
@@ -157,9 +261,19 @@
     // キーボードイベントリスナー追加
     document.addEventListener('keydown', handleKeyDown);
     
+    // 地図ドラッグ用グローバルイベントリスナー（マウス・タッチ対応）
+    document.addEventListener('mousemove', handleMapMouseMove);
+    document.addEventListener('mouseup', handleMapMouseUp);
+    document.addEventListener('touchmove', handleMapTouchMove, { passive: false });
+    document.addEventListener('touchend', handleMapTouchEnd);
+    
     // クリーンアップ
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousemove', handleMapMouseMove);
+      document.removeEventListener('mouseup', handleMapMouseUp);
+      document.removeEventListener('touchmove', handleMapTouchMove);
+      document.removeEventListener('touchend', handleMapTouchEnd);
       if (titleClickTimer) clearTimeout(titleClickTimer);
     };
   });
@@ -323,11 +437,24 @@
 
   <div class="main-content">
     <div class="map-section">
-      <JapanMap 
-        {prefectureData}
-        on:prefectureClick={handlePrefectureClick}
-        on:prefectureHover={handlePrefectureHover}
-      />
+      <div class="map-controls">
+        <button class="zoom-btn" onclick={handleZoomIn} title="拡大">🔍+</button>
+        <button class="zoom-btn" onclick={handleZoomOut} title="縮小">🔍-</button>
+        <button class="zoom-btn" onclick={handleZoomReset} title="リセット">⌂</button>
+      </div>
+      
+      <div 
+        class="map-container {mapZoom > 1 ? 'zoomed' : ''} {isDragging ? 'dragging' : ''}" 
+        bind:this={mapContainer} 
+        onmousedown={handleMapMouseDown}
+        ontouchstart={handleMapTouchStart}
+      >
+        <JapanMap 
+          {prefectureData}
+          on:prefectureClick={handlePrefectureClick}
+          on:prefectureHover={handlePrefectureHover}
+        />
+      </div>
       
       {#if hoveredPrefecture}
         <div class="hover-info">
@@ -536,6 +663,64 @@
     border-radius: 12px;
     box-shadow: 0 4px 20px var(--shadow-neutral);
     padding: 1.5rem;
+  }
+
+  .map-controls {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 10;
+  }
+
+  .zoom-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    white-space: nowrap;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  .zoom-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    border-color: #bbb;
+    transform: scale(1.05);
+  }
+
+  .zoom-btn:active {
+    transform: scale(0.95);
+  }
+
+  .map-container {
+    overflow: hidden;
+    border-radius: 8px;
+    position: relative;
+    cursor: default;
+  }
+
+  .map-container :global(.japan-map-container) {
+    transition: transform 0.3s ease;
+    transform-origin: center center;
+  }
+
+  .map-container.zoomed {
+    cursor: grab;
+  }
+
+  .map-container.dragging {
+    cursor: grabbing;
   }
 
   .hover-info {
