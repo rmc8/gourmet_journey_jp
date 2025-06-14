@@ -80,15 +80,39 @@
 
   onMount(async () => {
     try {
-      // Load the SVG content from the Geolonia project
-      const response = await fetch('https://raw.githubusercontent.com/geolonia/japanese-prefectures/master/map-mobile.svg');
+      console.log('🗾 日本地図の読み込み開始...');
+      
+      // Load the SVG content from local file first, fallback to external URL
+      let response: Response;
+      try {
+        response = await fetch('/japan-map.svg');
+        if (!response.ok) {
+          throw new Error(`Local SVG not found: ${response.status}`);
+        }
+        console.log('✅ ローカルSVGファイルを読み込みました');
+      } catch (localError) {
+        console.warn('⚠️ ローカルSVGの読み込みに失敗、外部URLを試行:', localError);
+        response = await fetch('https://raw.githubusercontent.com/geolonia/japanese-prefectures/master/map-mobile.svg');
+        if (!response.ok) {
+          throw new Error(`External SVG fetch failed: ${response.status}`);
+        }
+        console.log('✅ 外部SVGファイルを読み込みました');
+      }
+      
       const svgContent = await response.text();
+      
+      if (!svgContent || svgContent.trim().length === 0) {
+        throw new Error('SVG content is empty');
+      }
       
       // Insert the SVG content
       svgContainer.innerHTML = svgContent;
+      console.log('✅ SVGコンテンツを挿入しました');
       
       // Add event listeners to all prefecture elements
       const prefectureElements = svgContainer.querySelectorAll('[data-code]');
+      console.log(`🏷️ 都道府県要素を${prefectureElements.length}個発見しました`);
+      
       prefectureElements.forEach(element => {
         const dataCode = element.getAttribute('data-code');
         if (dataCode) {
@@ -117,15 +141,32 @@
       
       // Apply initial styles
       updatePrefectureStyles();
+      console.log('🎨 初期スタイルを適用しました');
+      
     } catch (error) {
-      console.error('Failed to load Japan map:', error);
-      // Fallback: show a simple message
-      svgContainer.innerHTML = '<p>地図の読み込みに失敗しました</p>';
+      console.error('❌ 日本地図の読み込みに失敗:', error);
+      // Fallback: show a more informative message with retry option
+      svgContainer.innerHTML = `
+        <div style="text-align: center; padding: 2rem; color: #666;">
+          <h3>🗾 地図の読み込みに失敗しました</h3>
+          <p>エラー: ${error instanceof Error ? error.message : '不明なエラー'}</p>
+          <button onclick="location.reload()" style="
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 1rem;
+          ">🔄 再読み込み</button>
+        </div>
+      `;
     }
   });
 
   // Update styles when prefecture data changes
   $: if (prefectureData && svgContainer) {
+    console.log('🔄 都道府県データが更新されました:', prefectureData.length);
     updatePrefectureStyles();
   }
 </script>
