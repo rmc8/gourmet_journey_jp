@@ -50,12 +50,10 @@ export function getHeatmapColor(completedCount: number): ColorConfig {
  * ホバー時の色設定
  */
 export function getHoverColor(completedCount: number): ColorConfig {
-  const baseColor = getHeatmapColor(completedCount);
-  
   return {
-    fill: baseColor.fill,
-    stroke: '#333333',
-    strokeWidth: 2.5
+    fill: '#FDD835', // 自然な黄色（グラデーションに調和）
+    stroke: '#FF9800', // オレンジ系の境界線
+    strokeWidth: 1.5 // 細いストローク
   };
 }
 
@@ -64,8 +62,8 @@ export function getHoverColor(completedCount: number): ColorConfig {
  */
 export function getSelectedColor(): ColorConfig {
   return {
-    fill: '#FF5722', // 深いオレンジ赤（暖色系の強調色）
-    stroke: '#D84315', // より深い赤オレンジ
-    strokeWidth: 3
+    fill: '#FF9800', // 暖色系オレンジ（自然な強調色）
+    stroke: '#F57C00', // 濃いオレンジ
+    strokeWidth: 2 // 控えめなストローク
   };
 }
