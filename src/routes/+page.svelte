@@ -628,8 +628,8 @@
     padding: 1rem 1.5rem;
     border-radius: 12px;
     text-align: center;
-    min-width: 140px;
     width: 140px;
+    flex-shrink: 0;
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
@@ -642,9 +642,11 @@
 
   .stat-label {
     display: block;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     opacity: 0.9;
     margin-top: 0.25rem;
+    white-space: nowrap;
+    font-weight: 500;
   }
 
   .main-content {
@@ -910,7 +912,7 @@
 
     .stat-item {
       padding: 0.75rem 1rem;
-      min-width: 80px;
+      width: 120px;
     }
 
     .stat-number {
@@ -934,8 +936,8 @@
     }
 
     .stat-item {
-      width: 100%;
-      max-width: 200px;
+      width: 140px;
+      max-width: 140px;
     }
 
     .main-content {
