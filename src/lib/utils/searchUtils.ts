@@ -82,7 +82,19 @@ export function generateRakutenSearchUrl(prefecture: PrefectureData): string {
  */
 export function generatePerplexitySearchUrl(prefecture: PrefectureData): string {
   const keyword = generateSearchKeyword(prefecture);
-  const searchQuery = encodeURIComponent(`${prefecture.name} ご当地グルメ お取り寄せ 特産品 おすすめ`);
+  
+  const naturalQuery = `${prefecture.name}の人気ご当地グルメでお取り寄せ可能な商品を教えてください。以下の形式でテーブル表示してください：
+
+【${prefecture.name}のおすすめお取り寄せグルメ】
+
+| 商品名 | 特徴・説明 | 価格帯 | Yahoo!ショッピング検索 |
+|--------|-----------|--------|----------------------|
+| 商品1 | 詳細説明 | 価格例 | [Yahoo!で検索](https://shopping.yahoo.co.jp/search?p=商品名+${keyword}) |
+| 商品2 | 詳細説明 | 価格例 | [Yahoo!で検索](https://shopping.yahoo.co.jp/search?p=商品名+${keyword}) |
+
+5-10個の人気商品をテーブル形式で紹介し、それぞれにYahoo!ショッピングの検索リンクを含めてください。商品名は具体的に、特徴は簡潔に、価格帯は目安を教えてください。`;
+
+  const searchQuery = encodeURIComponent(naturalQuery);
   return `https://www.perplexity.ai/search?q=${searchQuery}`;
 }
 

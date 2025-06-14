@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PrefectureData } from '../data/mockData';
+  import { generatePerplexitySearchUrl } from '../utils/searchUtils';
 
   interface Props {
     isOpen: boolean;
@@ -135,7 +136,7 @@
       case 'rakuten':
         return `https://search.rakuten.co.jp/search/mall/${query}/`;
       case 'perplexity':
-        return `https://www.perplexity.ai/search?q=${query}`;
+        return generatePerplexitySearchUrl(prefecture);
       default:
         return '';
     }
