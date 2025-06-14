@@ -406,6 +406,7 @@
   let totalCompleted = $derived(prefectureData.reduce((sum, p) => sum + p.completedCount, 0));
   let totalPurchased = $derived(prefectureData.reduce((sum, p) => sum + p.purchasedCount, 0));
   let completedPrefectures = $derived(prefectureData.filter(p => p.completedCount > 0).length);
+
 </script>
 
 <main class="app-container">

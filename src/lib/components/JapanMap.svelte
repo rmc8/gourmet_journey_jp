@@ -166,7 +166,6 @@
 
   // Update styles when prefecture data changes
   $: if (prefectureData && svgContainer) {
-    console.log('🔄 都道府県データが更新されました:', prefectureData.length);
     updatePrefectureStyles();
   }
 </script>
