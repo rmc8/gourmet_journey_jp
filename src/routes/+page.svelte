@@ -500,7 +500,8 @@
     padding: 1rem 1.5rem;
     border-radius: 12px;
     text-align: center;
-    min-width: 100px;
+    min-width: 140px;
+    width: 140px;
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
