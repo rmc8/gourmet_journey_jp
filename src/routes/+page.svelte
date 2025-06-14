@@ -340,13 +340,13 @@
 
     <div class="sidebar">
       <div class="action-buttons">
-        <button class="btn btn-primary">
+        <button class="btn btn-accent">
           🎲 ルーレット
         </button>
-        <button class="btn btn-secondary" onclick={handleOpenRecordForm}>
+        <button class="btn btn-primary" onclick={handleOpenRecordForm}>
           📝 記録追加
         </button>
-        <button class="btn btn-secondary" onclick={handleOpenRecordList}>
+        <button class="btn btn-secondary-warm" onclick={handleOpenRecordList}>
           📊 記録一覧
         </button>
         
@@ -582,15 +582,15 @@
   }
 
   .btn-primary {
-    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--secondary-dark) 100%);
+    background: linear-gradient(135deg, #FFAB40 0%, #FF6F00 100%);
     color: var(--white);
     border: none;
   }
 
   .btn-primary:hover {
-    background: linear-gradient(135deg, var(--secondary-dark) 0%, var(--secondary-color) 100%);
+    background: linear-gradient(135deg, #FF8F00 0%, #FF5722 100%);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px var(--shadow-secondary);
+    box-shadow: 0 4px 12px rgba(255, 143, 0, 0.3);
   }
 
   .btn-secondary {
@@ -604,6 +604,31 @@
     color: var(--neutral-900);
     transform: translateY(-1px);
     box-shadow: 0 2px 8px var(--shadow-neutral);
+  }
+
+  .btn-secondary-warm {
+    background: linear-gradient(135deg, #FFAB40 0%, #FF8F00 100%);
+    color: var(--white);
+    border: none;
+  }
+
+  .btn-secondary-warm:hover {
+    background: linear-gradient(135deg, #FF8F00 0%, #FF6F00 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+  }
+
+  .btn-accent {
+    background: linear-gradient(135deg, #FFC107 0%, #FF9800 100%);
+    color: var(--white);
+    border: none;
+    font-weight: 500;
+  }
+
+  .btn-accent:hover {
+    background: linear-gradient(135deg, #FF9800 0%, #FF8F00 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 167, 38, 0.3);
   }
 
   .btn-warning {
