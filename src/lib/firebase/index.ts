@@ -46,20 +46,38 @@ import { Timestamp } from 'firebase/firestore';
 export function convertToFirestoreRecord(
   record: Omit<GourmetRecord, 'id'>
 ): Omit<FirestoreGourmetRecord, 'id' | 'createdAt' | 'updatedAt'> {
-  return {
+  const firestoreRecord: Partial<Omit<FirestoreGourmetRecord, 'id' | 'createdAt' | 'updatedAt'>> = {
     productName: record.productName,
-    productUrl: record.productUrl,
     orderDate: Timestamp.fromDate(record.orderDate),
     prefecture: record.prefecture,
-    price: record.price,
-    shopUrl: record.shopUrl,
-    shopName: record.shopName,
     status: record.status,
     rating: record.rating,
-    photoUrl: record.photoUrl,
-    mealDate: record.mealDate ? Timestamp.fromDate(record.mealDate) : undefined,
-    memo: record.memo,
   };
+
+  // Optional fields - only include if they have values
+  if (record.productUrl) {
+    firestoreRecord.productUrl = record.productUrl;
+  }
+  if (record.price !== undefined && record.price !== null) {
+    firestoreRecord.price = record.price;
+  }
+  if (record.shopUrl) {
+    firestoreRecord.shopUrl = record.shopUrl;
+  }
+  if (record.shopName) {
+    firestoreRecord.shopName = record.shopName;
+  }
+  if (record.photoUrl) {
+    firestoreRecord.photoUrl = record.photoUrl;
+  }
+  if (record.mealDate) {
+    firestoreRecord.mealDate = Timestamp.fromDate(record.mealDate);
+  }
+  if (record.memo) {
+    firestoreRecord.memo = record.memo;
+  }
+
+  return firestoreRecord as Omit<FirestoreGourmetRecord, 'id' | 'createdAt' | 'updatedAt'>;
 }
 
 /**
