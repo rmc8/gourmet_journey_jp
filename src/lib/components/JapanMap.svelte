@@ -1,14 +1,19 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import type { PrefectureData } from '../data/mockData';
   import { getHeatmapColor, getHoverColor, getSelectedColor } from '../utils/heatmapColors';
 
-  export let prefectureData: PrefectureData[] = [];
-  
-  const dispatch = createEventDispatcher<{
-    prefectureClick: { prefecture: PrefectureData };
-    prefectureHover: { prefecture: PrefectureData | null };
-  }>();
+  interface Props {
+    prefectureData: PrefectureData[];
+    onPrefectureClick?: (prefecture: PrefectureData) => void;
+    onPrefectureHover?: (prefecture: PrefectureData | null) => void;
+  }
+
+  let { 
+    prefectureData = [],
+    onPrefectureClick,
+    onPrefectureHover
+  }: Props = $props();
 
   let svgContainer: HTMLDivElement;
   let hoveredPrefecture: string | null = null;
@@ -33,20 +38,22 @@
   }
 
   function handlePrefectureClick(prefecture: PrefectureData) {
+    console.log('🗺️ 都道府県がクリックされました:', prefecture.name);
     selectedPrefecture = prefecture.id;
-    dispatch('prefectureClick', { prefecture });
+    onPrefectureClick?.(prefecture);
+    
     updatePrefectureStyles();
   }
 
   function handlePrefectureMouseEnter(prefecture: PrefectureData) {
     hoveredPrefecture = prefecture.id;
-    dispatch('prefectureHover', { prefecture });
+    onPrefectureHover?.(prefecture);
     updatePrefectureStyles();
   }
 
   function handlePrefectureMouseLeave() {
     hoveredPrefecture = null;
-    dispatch('prefectureHover', { prefecture: null });
+    onPrefectureHover?.(null);
     updatePrefectureStyles();
   }
 
@@ -81,6 +88,7 @@
   onMount(async () => {
     try {
       console.log('🗾 日本地図の読み込み開始...');
+      console.log('📊 prefectureData:', prefectureData);
       
       // Load the SVG content from local file first, fallback to external URL
       let response: Response;
@@ -109,35 +117,76 @@
       svgContainer.innerHTML = svgContent;
       console.log('✅ SVGコンテンツを挿入しました');
       
-      // Add event listeners to all prefecture elements
+      // 既存の都道府県要素を準備
       const prefectureElements = svgContainer.querySelectorAll('[data-code]');
       console.log(`🏷️ 都道府県要素を${prefectureElements.length}個発見しました`);
       
-      prefectureElements.forEach(element => {
+      // 各要素にスタイルとアクセシビリティ属性を設定
+      prefectureElements.forEach((element) => {
         const dataCode = element.getAttribute('data-code');
         if (dataCode) {
           const prefecture = getPrefectureByDataCode(dataCode);
           if (prefecture) {
-            // Add CSS classes for styling
             element.classList.add('prefecture');
             element.setAttribute('role', 'button');
             element.setAttribute('tabindex', '0');
             element.setAttribute('aria-label', prefecture.name);
             
-            // Add event listeners
-            element.addEventListener('click', () => handlePrefectureClick(prefecture));
-            element.addEventListener('mouseenter', () => handlePrefectureMouseEnter(prefecture));
-            element.addEventListener('mouseleave', handlePrefectureMouseLeave);
-            element.addEventListener('keydown', (e) => {
-              const keyEvent = e as KeyboardEvent;
-              if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
-                keyEvent.preventDefault();
-                handlePrefectureClick(prefecture);
-              }
-            });
+            // 直接スタイルを注入してタッチ可能にする
+            (element as SVGElement).style.cursor = 'pointer';
+            (element as SVGElement).style.pointerEvents = 'all';
+            (element as SVGElement).style.touchAction = 'manipulation';
           }
         }
       });
+      
+      // イベント委譲パターン: SVGコンテナ全体で1つのイベントリスナー
+      const handleContainerEvent = (e: Event) => {
+        const target = e.target as Element;
+        
+        // data-code属性を持つ要素、またはその親要素を探す
+        let prefectureElement = target.closest('[data-code]');
+        
+        if (prefectureElement) {
+          const dataCode = prefectureElement.getAttribute('data-code');
+          if (dataCode) {
+            const prefecture = getPrefectureByDataCode(dataCode);
+            if (prefecture) {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('🎯 イベント委譲でキャッチ:', prefecture.name, 'イベントタイプ:', e.type);
+              handlePrefectureClick(prefecture);
+            }
+          }
+        }
+      };
+      
+      // SVGコンテナにイベントリスナーを設定（委譲パターン）
+      svgContainer.addEventListener('click', handleContainerEvent, { passive: false });
+      svgContainer.addEventListener('touchend', handleContainerEvent, { passive: false });
+      svgContainer.addEventListener('pointerup', handleContainerEvent, { passive: false });
+      
+      // ホバー効果用のイベント委譲
+      svgContainer.addEventListener('mouseover', (e: Event) => {
+        const target = e.target as Element;
+        const prefectureElement = target.closest('[data-code]');
+        
+        if (prefectureElement) {
+          const dataCode = prefectureElement.getAttribute('data-code');
+          if (dataCode) {
+            const prefecture = getPrefectureByDataCode(dataCode);
+            if (prefecture) {
+              handlePrefectureMouseEnter(prefecture);
+            }
+          }
+        }
+      });
+      
+      svgContainer.addEventListener('mouseout', (e: Event) => {
+        handlePrefectureMouseLeave();
+      });
+      
+      console.log('🎨 イベント委譲パターンを設定しました');
       
       // Apply initial styles
       updatePrefectureStyles();
@@ -145,29 +194,62 @@
       
     } catch (error) {
       console.error('❌ 日本地図の読み込みに失敗:', error);
-      // Fallback: show a more informative message with retry option
-      svgContainer.innerHTML = `
+      
+      // Fallback: 簡単な都道府県リスト表示
+      const fallbackHtml = `
         <div style="text-align: center; padding: 2rem; color: #666;">
           <h3>🗾 地図の読み込みに失敗しました</h3>
           <p>エラー: ${error instanceof Error ? error.message : '不明なエラー'}</p>
+          <p>代替として都道府県リストを表示します:</p>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 1rem;">
+            ${prefectureData.map(pref => `
+              <button 
+                onclick="handleFallbackClick('${pref.id}')" 
+                style="
+                  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+                  color: white;
+                  border: none;
+                  padding: 8px 12px;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-size: 0.9rem;
+                "
+              >
+                ${pref.name}
+              </button>
+            `).join('')}
+          </div>
           <button onclick="location.reload()" style="
-            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 12px 20px;
             border-radius: 6px;
             cursor: pointer;
-            margin-top: 1rem;
-          ">🔄 再読み込み</button>
+            margin-top: 2rem;
+            font-size: 1rem;
+          ">🔄 地図を再読み込み</button>
         </div>
       `;
+      
+      svgContainer.innerHTML = fallbackHtml;
+      
+      // フォールバック用のクリックハンドラーをグローバルに設定
+      (window as any).handleFallbackClick = (prefectureId: string) => {
+        const prefecture = prefectureData.find(p => p.id === prefectureId);
+        if (prefecture && onPrefectureClick) {
+          onPrefectureClick(prefecture);
+        }
+      };
     }
   });
 
   // Update styles when prefecture data changes
-  $: if (prefectureData && svgContainer) {
-    updatePrefectureStyles();
-  }
+  $effect(() => {
+    if (prefectureData && svgContainer) {
+      updatePrefectureStyles();
+    }
+  });
 </script>
 
 <div class="japan-map-container">
@@ -189,6 +271,10 @@
     height: auto;
     max-width: 600px;
     max-height: 800px;
+    /* タッチイベントを確実に受け取るための設定 */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
   }
 
   :global(.svg-container svg) {
@@ -199,6 +285,16 @@
   :global(.prefecture) {
     cursor: pointer;
     transition: all 0.2s ease-in-out;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(255, 152, 0, 0.3);
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    pointer-events: auto !important;
+    fill-opacity: 1;
+    stroke-opacity: 1;
   }
 
   :global(.prefecture:hover) {
