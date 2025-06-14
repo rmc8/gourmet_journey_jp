@@ -2,17 +2,24 @@
   import { createEventDispatcher } from 'svelte';
   import type { PrefectureData } from '../data/mockData';
   import { getAllPrefectureData } from '../data/mockData';
-  import { addGourmetRecord } from '../firebase/firestore';
+  import { addGourmetRecord, updateGourmetRecord } from '../firebase/firestore';
   import { convertToFirestoreRecord } from '../firebase';
+  import type { GourmetRecord } from '../data/mockData';
 
-  let { isOpen = $bindable(false), selectedPrefecture = null }: {
+  let { 
+    isOpen = $bindable(false), 
+    selectedPrefecture = null,
+    editingRecord = null
+  }: {
     isOpen: boolean;
     selectedPrefecture: PrefectureData | null;
+    editingRecord: GourmetRecord | null;
   } = $props();
 
   const dispatch = createEventDispatcher<{
     close: void;
     recordAdded: { record: any };
+    recordUpdated: { record: any };
   }>();
 
   // フォームデータ
@@ -43,22 +50,67 @@
 
   const prefectureData = getAllPrefectureData();
 
-  // 選択された都道府県が変更された場合
+  // 編集モードかどうかの判定
+  let isEditMode = $derived(editingRecord !== null);
+
+  // 型安全な文字列処理ヘルパー関数
+  function toSafeString(value: any): string {
+    if (value === null || value === undefined) return '';
+    return String(value);
+  }
+
+  function isNotEmptyString(value: string): boolean {
+    return value.trim().length > 0;
+  }
+
+  // 編集記録または選択された都道府県が変更された場合
   $effect(() => {
-    if (selectedPrefecture) {
+    if (editingRecord) {
+      // 編集モード: 既存記録をフォームに設定（全て文字列として統一）
+      formData = {
+        productName: editingRecord.productName || '',
+        prefecture: editingRecord.prefecture || '',
+        orderDate: editingRecord.orderDate.toISOString().split('T')[0],
+        price: editingRecord.price ? editingRecord.price.toString() : '',
+        shopName: editingRecord.shopName || '',
+        shopUrl: editingRecord.shopUrl || '',
+        productUrl: editingRecord.productUrl || '',
+        status: editingRecord.status,
+        rating: editingRecord.rating || 0,
+        mealDate: editingRecord.mealDate ? editingRecord.mealDate.toISOString().split('T')[0] : '',
+        memo: editingRecord.memo || '',
+        photoUrl: editingRecord.photoUrl || ''
+      };
+    } else if (selectedPrefecture) {
+      // 新規作成モード: 選択された都道府県を設定
       formData.prefecture = selectedPrefecture.id;
     }
   });
 
   function validateForm(): boolean {
-    errors.productName = formData.productName.trim() ? '' : '商品名は必須です';
-    errors.prefecture = formData.prefecture ? '' : '都道府県を選択してください';
-    errors.orderDate = formData.orderDate ? '' : '注文日は必須です';
+    // 必須項目のバリデーション
+    const productName = toSafeString(formData.productName).trim();
+    const prefecture = toSafeString(formData.prefecture).trim();
+    const orderDate = toSafeString(formData.orderDate).trim();
+
+    errors.productName = isNotEmptyString(productName) ? '' : '商品名は必須です';
+    errors.prefecture = isNotEmptyString(prefecture) ? '' : '都道府県を選択してください';
+    errors.orderDate = isNotEmptyString(orderDate) ? '' : '注文日は必須です';
+
+    // 任意項目のフォーマットバリデーション
+    const priceStr = toSafeString(formData.price).trim();
+    if (isNotEmptyString(priceStr)) {
+      const priceNum = parseFloat(priceStr);
+      if (isNaN(priceNum) || priceNum < 0) {
+        errors.productName = '価格は正の数値で入力してください'; // 一時的にproductNameエラーに表示
+      }
+    }
 
     return !errors.productName && !errors.prefecture && !errors.orderDate;
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(event?: Event) {
+    event?.preventDefault();
     if (!validateForm()) {
       return;
     }
@@ -71,7 +123,7 @@
       const orderDate = new Date(formData.orderDate);
       const mealDate = formData.mealDate ? new Date(formData.mealDate) : undefined;
 
-      // GourmetRecord 形式に変換（undefined値を避ける）
+      // GourmetRecord 形式に変換（型安全な処理）
       const record: any = {
         productName: formData.productName.trim(),
         orderDate,
@@ -82,38 +134,70 @@
         updatedAt: new Date()
       };
 
-      // Optional fields - only add if they have values
-      const productUrl = formData.productUrl.trim();
-      if (productUrl) record.productUrl = productUrl;
-      
-      if (formData.price && formData.price.trim()) {
-        record.price = parseFloat(formData.price);
+      // Optional fields - 値がある場合のみ追加
+      const productUrl = toSafeString(formData.productUrl).trim();
+      if (isNotEmptyString(productUrl)) {
+        record.productUrl = productUrl;
       }
       
-      const shopUrl = formData.shopUrl.trim();
-      if (shopUrl) record.shopUrl = shopUrl;
+      const priceStr = toSafeString(formData.price).trim();
+      if (isNotEmptyString(priceStr)) {
+        const priceNum = parseFloat(priceStr);
+        if (!isNaN(priceNum) && priceNum > 0) {
+          record.price = priceNum;
+        }
+      }
       
-      const shopName = formData.shopName.trim();
-      if (shopName) record.shopName = shopName;
+      const shopUrl = toSafeString(formData.shopUrl).trim();
+      if (isNotEmptyString(shopUrl)) {
+        record.shopUrl = shopUrl;
+      }
       
-      const photoUrl = formData.photoUrl.trim();
-      if (photoUrl) record.photoUrl = photoUrl;
+      const shopName = toSafeString(formData.shopName).trim();
+      if (isNotEmptyString(shopName)) {
+        record.shopName = shopName;
+      }
       
-      if (mealDate) record.mealDate = mealDate;
+      const photoUrl = toSafeString(formData.photoUrl).trim();
+      if (isNotEmptyString(photoUrl)) {
+        record.photoUrl = photoUrl;
+      }
       
-      const memo = formData.memo.trim();
-      if (memo) record.memo = memo;
+      if (mealDate) {
+        record.mealDate = mealDate;
+      }
+      
+      const memo = toSafeString(formData.memo).trim();
+      if (isNotEmptyString(memo)) {
+        record.memo = memo;
+      }
 
-      // Firestoreに保存
-      const firestoreRecord = convertToFirestoreRecord(record);
-      const result = await addGourmetRecord(firestoreRecord);
-
-      if (result.success) {
-        dispatch('recordAdded', { record: { ...record, id: result.data } });
-        handleClose();
-        resetForm();
+      let result;
+      
+      if (isEditMode && editingRecord) {
+        // 編集モード: 既存記録を更新
+        const firestoreRecord = convertToFirestoreRecord(record);
+        result = await updateGourmetRecord(editingRecord.id, firestoreRecord);
+        
+        if (result.success) {
+          dispatch('recordUpdated', { record: { ...record, id: editingRecord.id } });
+          handleClose();
+          resetForm();
+        } else {
+          submitError = result.error || '記録の更新に失敗しました';
+        }
       } else {
-        submitError = result.error || '記録の保存に失敗しました';
+        // 新規作成モード: 新しい記録を追加
+        const firestoreRecord = convertToFirestoreRecord(record);
+        result = await addGourmetRecord(firestoreRecord);
+
+        if (result.success) {
+          dispatch('recordAdded', { record: { ...record, id: result.data } });
+          handleClose();
+          resetForm();
+        } else {
+          submitError = result.error || '記録の保存に失敗しました';
+        }
       }
     } catch (error) {
       submitError = error instanceof Error ? error.message : '不明なエラーが発生しました';
@@ -167,24 +251,24 @@
 </script>
 
 {#if isOpen}
-  <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div 
     class="modal-backdrop" 
     role="dialog" 
     aria-modal="true"
     aria-labelledby="modal-title"
     tabindex="-1"
-    on:click={handleBackdropClick}
-    on:keydown={handleKeyDown}
+    onclick={handleBackdropClick}
+    onkeydown={handleKeyDown}
   >
     <div class="modal-content">
       <div class="modal-header">
         <h2 id="modal-title" class="modal-title">
-          新しい記録を追加
+          {isEditMode ? '記録を編集' : '新しい記録を追加'}
         </h2>
         <button 
           class="close-button"
-          on:click={handleClose}
+          onclick={handleClose}
           aria-label="モーダルを閉じる"
           disabled={isSubmitting}
         >
@@ -192,7 +276,7 @@
         </button>
       </div>
 
-      <form class="modal-body" on:submit|preventDefault={handleSubmit}>
+      <form class="modal-body" onsubmit={handleSubmit}>
         {#if submitError}
           <div class="error-message">
             {submitError}
@@ -257,7 +341,8 @@
 
         <!-- ステータス -->
         <div class="form-group">
-          <label class="form-label">ステータス</label>
+          <fieldset>
+            <legend class="form-label">ステータス</legend>
           <div class="radio-group">
             <label class="radio-label">
               <input
@@ -278,19 +363,21 @@
               食事完了
             </label>
           </div>
+          </fieldset>
         </div>
 
         <!-- 評価（食事完了の場合のみ） -->
         {#if formData.status === 'completed'}
           <div class="form-group">
-            <label class="form-label">評価</label>
+            <fieldset>
+              <legend class="form-label">評価</legend>
             <div class="rating-input">
               {#each [1, 2, 3, 4, 5] as star}
                 <button
                   type="button"
                   class="star-button"
                   class:active={star <= formData.rating}
-                  on:click={() => handleRatingClick(star)}
+                  onclick={() => handleRatingClick(star)}
                   disabled={isSubmitting}
                   aria-label="{star}つ星"
                 >
@@ -300,12 +387,13 @@
               <button
                 type="button"
                 class="rating-reset"
-                on:click={() => handleRatingClick(0)}
+                onclick={() => handleRatingClick(0)}
                 disabled={isSubmitting}
               >
                 リセット
               </button>
             </div>
+            </fieldset>
           </div>
 
           <!-- 食事日 -->
@@ -393,15 +481,15 @@
         <button 
           type="button"
           class="btn btn-primary"
-          on:click={handleSubmit}
+          onclick={handleSubmit}
           disabled={isSubmitting}
         >
-          {isSubmitting ? '保存中...' : '保存'}
+          {isSubmitting ? (isEditMode ? '更新中...' : '保存中...') : (isEditMode ? '更新' : '保存')}
         </button>
         <button 
           type="button"
           class="btn btn-secondary"
-          on:click={handleClose}
+          onclick={handleClose}
           disabled={isSubmitting}
         >
           キャンセル

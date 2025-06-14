@@ -34,6 +34,19 @@ import type {
 } from './types';
 import { FIRESTORE_COLLECTIONS } from './types';
 
+/**
+ * タイムアウト付きでPromiseを実行
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`操作がタイムアウトしました (${timeoutMs}ms)`));
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]);
+}
+
 let app: FirebaseApp;
 let db: Firestore;
 let isInitialized = false;
@@ -91,6 +104,12 @@ export async function addGourmetRecord(
   record: Omit<FirestoreGourmetRecord, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<FirestoreResult<string>> {
   try {
+    // Firebase初期化を先に実行
+    const initResult = await initializeFirebase();
+    if (!initResult.success) {
+      return { success: false, error: initResult.error };
+    }
+
     const db = getFirestoreInstance();
     const now = Timestamp.now();
     
@@ -100,7 +119,10 @@ export async function addGourmetRecord(
       updatedAt: now,
     };
 
-    const docRef = await addDoc(collection(db, FIRESTORE_COLLECTIONS.GOURMET_RECORDS), recordWithTimestamps);
+    const docRef = await withTimeout(
+      addDoc(collection(db, FIRESTORE_COLLECTIONS.GOURMET_RECORDS), recordWithTimestamps),
+      15000 // 15秒タイムアウト
+    );
     
     return { success: true, data: docRef.id };
   } catch (error) {
@@ -220,6 +242,20 @@ export async function getGourmetRecords(
   }
 }
 
+// 都道府県IDから名前への変換マップ
+const PREFECTURE_NAME_MAP: Record<string, string> = {
+  'hokkaido': '北海道', 'aomori': '青森県', 'iwate': '岩手県', 'miyagi': '宮城県', 'akita': '秋田県',
+  'yamagata': '山形県', 'fukushima': '福島県', 'ibaraki': '茨城県', 'tochigi': '栃木県', 'gunma': '群馬県',
+  'saitama': '埼玉県', 'chiba': '千葉県', 'tokyo': '東京都', 'kanagawa': '神奈川県', 'niigata': '新潟県',
+  'toyama': '富山県', 'ishikawa': '石川県', 'fukui': '福井県', 'yamanashi': '山梨県', 'nagano': '長野県',
+  'gifu': '岐阜県', 'shizuoka': '静岡県', 'aichi': '愛知県', 'mie': '三重県', 'shiga': '滋賀県',
+  'kyoto': '京都府', 'osaka': '大阪府', 'hyogo': '兵庫県', 'nara': '奈良県', 'wakayama': '和歌山県',
+  'tottori': '鳥取県', 'shimane': '島根県', 'okayama': '岡山県', 'hiroshima': '広島県', 'yamaguchi': '山口県',
+  'tokushima': '徳島県', 'kagawa': '香川県', 'ehime': '愛媛県', 'kochi': '高知県', 'fukuoka': '福岡県',
+  'saga': '佐賀県', 'nagasaki': '長崎県', 'kumamoto': '熊本県', 'oita': '大分県', 'miyazaki': '宮崎県',
+  'kagoshima': '鹿児島県', 'okinawa': '沖縄県'
+};
+
 /**
  * 都道府県別の統計を取得
  */
@@ -241,7 +277,7 @@ export async function getPrefectureStats(): Promise<FirestoreResult<PrefectureSt
       if (!statsMap.has(prefectureId)) {
         statsMap.set(prefectureId, {
           prefectureId,
-          prefectureName: prefectureId, // TODO: 名前マッピング
+          prefectureName: PREFECTURE_NAME_MAP[prefectureId] || prefectureId,
           completedCount: 0,
           purchasedCount: 0,
           totalSpent: 0,
@@ -285,6 +321,12 @@ export async function getPrefectureStats(): Promise<FirestoreResult<PrefectureSt
  */
 export async function testFirestoreConnection(): Promise<FirestoreResult<boolean>> {
   try {
+    // Firebase初期化を先に実行
+    const initResult = await withTimeout(initializeFirebase(), 10000);
+    if (!initResult.success) {
+      return { success: false, error: initResult.error };
+    }
+
     const db = getFirestoreInstance();
     
     // テスト用ドキュメントの作成/更新
@@ -295,11 +337,14 @@ export async function testFirestoreConnection(): Promise<FirestoreResult<boolean
     };
     
     // setDoc を使用してドキュメントを作成または更新
-    await updateDoc(testDoc, testData).catch(async () => {
-      // ドキュメントが存在しない場合は作成
-      const { setDoc } = await import('firebase/firestore');
-      await setDoc(testDoc, testData);
-    });
+    await withTimeout(
+      updateDoc(testDoc, testData).catch(async () => {
+        // ドキュメントが存在しない場合は作成
+        const { setDoc } = await import('firebase/firestore');
+        await setDoc(testDoc, testData);
+      }),
+      10000 // 10秒タイムアウト
+    );
     
     return { success: true, data: true };
   } catch (error) {

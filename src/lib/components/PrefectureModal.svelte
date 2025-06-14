@@ -1,14 +1,68 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { PrefectureData } from '../data/mockData';
+  import { onMount } from 'svelte';
+  import type { PrefectureData, GourmetRecord } from '../data/mockData';
+  import { getGourmetRecords } from '../firebase/firestore';
+  import { convertFromFirestoreRecord } from '../firebase';
 
-  export let isOpen: boolean = false;
-  export let prefecture: PrefectureData | null = null;
+  let { 
+    isOpen = $bindable(false),
+    prefecture = null
+  }: {
+    isOpen: boolean;
+    prefecture: PrefectureData | null;
+  } = $props();
 
   const dispatch = createEventDispatcher<{
     close: void;
     addRecord: { prefecture: PrefectureData };
+    editRecord: { record: GourmetRecord };
+    deleteRecord: { record: GourmetRecord };
   }>();
+
+  let prefectureRecords: GourmetRecord[] = $state([]);
+  let isLoading = $state(false);
+  let error = $state<string | null>(null);
+
+  // 県別統計の計算
+  let stats = $derived.by(() => {
+    const completedCount = prefectureRecords.filter(r => r.status === 'completed').length;
+    const purchasedCount = prefectureRecords.length;
+    const totalSpent = prefectureRecords.reduce((sum, r) => sum + (r.price || 0), 0);
+    const avgRating = prefectureRecords.filter(r => r.rating > 0).reduce((sum, r, _, arr) => 
+      arr.length > 0 ? sum + r.rating / arr.length : 0, 0
+    );
+    
+    return { completedCount, purchasedCount, totalSpent, avgRating };
+  });
+
+  async function loadPrefectureRecords() {
+    if (!prefecture) return;
+    
+    isLoading = true;
+    error = null;
+    
+    try {
+      const result = await getGourmetRecords({
+        where: [{ field: 'prefecture', operator: '==', value: prefecture.id }]
+        // orderByは一旦無効化（Firebaseインデックス作成まで）
+      });
+      
+      if (result.success && result.data) {
+        prefectureRecords = result.data
+          .map(convertFromFirestoreRecord)
+          .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime()); // クライアント側でソート
+      } else {
+        error = result.error || '記録の取得に失敗しました';
+        prefectureRecords = [];
+      }
+    } catch (err) {
+      error = err instanceof Error ? err.message : '不明なエラーが発生しました';
+      prefectureRecords = [];
+    } finally {
+      isLoading = false;
+    }
+  }
 
   function handleClose() {
     isOpen = false;
@@ -20,6 +74,21 @@
       dispatch('addRecord', { prefecture });
     }
   }
+
+  function handleEditRecord(record: GourmetRecord) {
+    dispatch('editRecord', { record });
+  }
+
+  function handleDeleteRecord(record: GourmetRecord) {
+    dispatch('deleteRecord', { record });
+  }
+
+  // 県が変更されたときに記録を読み込み
+  $effect(() => {
+    if (isOpen && prefecture) {
+      loadPrefectureRecords();
+    }
+  });
 
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
@@ -35,15 +104,15 @@
 </script>
 
 {#if isOpen && prefecture}
-  <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div 
     class="modal-backdrop" 
     role="dialog" 
     aria-modal="true"
     aria-labelledby="modal-title"
     tabindex="-1"
-    on:click={handleBackdropClick}
-    on:keydown={handleKeyDown}
+    onclick={handleBackdropClick}
+    onkeydown={handleKeyDown}
   >
     <div class="modal-content">
       <div class="modal-header">
@@ -52,7 +121,7 @@
         </h2>
         <button 
           class="close-button"
-          on:click={handleClose}
+          onclick={handleClose}
           aria-label="モーダルを閉じる"
         >
           ×
@@ -65,31 +134,66 @@
           <div class="stats-grid">
             <div class="stat-item">
               <span class="stat-label">食事完了</span>
-              <span class="stat-value completed">{prefecture.completedCount}回</span>
+              <span class="stat-value completed">{stats.completedCount}回</span>
             </div>
             <div class="stat-item">
               <span class="stat-label">購入済み</span>
-              <span class="stat-value purchased">{prefecture.purchasedCount}回</span>
+              <span class="stat-value purchased">{stats.purchasedCount}回</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">総支出</span>
+              <span class="stat-value total">¥{stats.totalSpent.toLocaleString()}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">平均評価</span>
+              <span class="stat-value rating">{stats.avgRating > 0 ? stats.avgRating.toFixed(1) + '★' : '未評価'}</span>
             </div>
           </div>
         </div>
 
         <div class="records-section">
           <h3>記録一覧</h3>
-          {#if prefecture.records.length > 0}
+          
+          {#if isLoading}
+            <div class="loading-message">記録を読み込み中...</div>
+          {:else if error}
+            <div class="error-message">{error}</div>
+          {:else if prefectureRecords.length > 0}
             <div class="records-list">
-              {#each prefecture.records as record (record.id)}
+              {#each prefectureRecords as record (record.id)}
                 <div class="record-item">
-                  <div class="record-name">{record.productName}</div>
-                  <div class="record-status">
-                    <span class="status-badge {record.status}">
-                      {record.status === 'completed' ? '食事完了' : '購入済み'}
-                    </span>
-                    {#if record.rating > 0}
-                      <span class="rating">
-                        {'★'.repeat(record.rating)}
+                  <div class="record-info">
+                    <div class="record-name">{record.productName}</div>
+                    <div class="record-date">{record.orderDate.toLocaleDateString('ja-JP')}</div>
+                    <div class="record-details">
+                      <span class="status-badge {record.status}">
+                        {record.status === 'completed' ? '食事完了' : '購入済み'}
                       </span>
-                    {/if}
+                      {#if record.rating > 0}
+                        <span class="rating">
+                          {'★'.repeat(record.rating)}
+                        </span>
+                      {/if}
+                      {#if record.price}
+                        <span class="price">¥{record.price.toLocaleString()}</span>
+                      {/if}
+                    </div>
+                  </div>
+                  <div class="record-actions">
+                    <button 
+                      class="btn-action btn-edit"
+                      onclick={() => handleEditRecord(record)}
+                      title="編集"
+                    >
+                      ✏️
+                    </button>
+                    <button 
+                      class="btn-action btn-delete"
+                      onclick={() => handleDeleteRecord(record)}
+                      title="削除"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 </div>
               {/each}
@@ -103,13 +207,13 @@
       <div class="modal-footer">
         <button 
           class="btn btn-primary"
-          on:click={handleAddRecord}
+          onclick={handleAddRecord}
         >
           新しい記録を追加
         </button>
         <button 
           class="btn btn-secondary"
-          on:click={handleClose}
+          onclick={handleClose}
         >
           閉じる
         </button>

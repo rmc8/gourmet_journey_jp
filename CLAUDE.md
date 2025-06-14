@@ -64,7 +64,14 @@
 - `src/` ディレクトリに配置
 - `@sveltejs/adapter-static` を使用し、`index.html` にフォールバック
 - Tauri統合用の固定ポート（1420）でViteビルドツール使用
-- TypeScriptサポート付きSvelte 5
+- **Svelte 5** TypeScriptサポート付き
+
+#### Svelte 5 重要事項
+- **runesを使用**: `$state`, `$derived`, `$props`, `$bindable`, `$effect`
+- **新しいイベント構文**: `onclick={handler}`, `onkeydown={handler}`, `onsubmit={handler}`
+- **旧構文使用禁止**: `on:click`, `on:keydown`, `let:`, `export let`, `$$props`
+- **props定義**: `let { prop = $bindable() } = $props()`
+- **リアクティブ宣言**: `let derived = $derived(...)` または `let derived = $derived.by(() => ...)`
 
 ### バックエンド（Tauri）
 - Rustベースのデスクトップアプリケーションフレームワーク

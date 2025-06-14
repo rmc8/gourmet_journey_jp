@@ -1,17 +1,168 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import JapanMap from '$lib/components/JapanMap.svelte';
   import PrefectureModal from '$lib/components/PrefectureModal.svelte';
   import GourmetRecordForm from '$lib/components/GourmetRecordForm.svelte';
-  import { getAllPrefectureData, type PrefectureData } from '$lib/data/mockData';
-  import { testFirestoreConnection } from '$lib/firebase/firestore';
+  import GourmetRecordList from '$lib/components/GourmetRecordList.svelte';
+  import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
+  import { getAllPrefectureData, type PrefectureData, type GourmetRecord } from '$lib/data/mockData';
+  import { testFirestoreConnection, deleteGourmetRecord, getPrefectureStats, initializeFirebase } from '$lib/firebase/firestore';
+  import type { PrefectureStats } from '$lib/firebase/types';
 
-  let prefectureData = getAllPrefectureData();
+  // 基本の都道府県データ（テンプレート）
+  let basePrefectureData = getAllPrefectureData();
+  
+  // 実際の統計データで更新されるヒートマップ用データ
+  let prefectureData: PrefectureData[] = $state([]);
+  
+  // UIの状態管理
   let isModalOpen = $state(false);
   let isRecordFormOpen = $state(false);
+  let isRecordListOpen = $state(false);
+  let isDeleteDialogOpen = $state(false);
   let selectedPrefecture: PrefectureData | null = $state(null);
+  let editingRecord: GourmetRecord | null = $state(null);
+  let deletingRecord: GourmetRecord | null = $state(null);
   let hoveredPrefecture: PrefectureData | null = $state(null);
   let testingConnection = $state(false);
   let connectionResult = $state<{success: boolean, error?: string} | null>(null);
+  let isDeleting = $state(false);
+  
+  // 統計データの読み込み状態
+  let isLoadingStats = $state(false);
+  let statsError = $state<string | null>(null);
+
+  // デバッグモード管理
+  let debugMode = $state(false);
+  let titleClickCount = $state(0);
+  let titleClickTimer: number | null = null;
+
+  /**
+   * Firestore から都道府県別統計を取得してヒートマップデータを更新
+   */
+  async function loadPrefectureStats() {
+    isLoadingStats = true;
+    statsError = null;
+    
+    try {
+      // Firebase初期化
+      const initResult = await initializeFirebase();
+      if (!initResult.success) {
+        throw new Error(initResult.error);
+      }
+
+      // 統計データ取得
+      const statsResult = await getPrefectureStats();
+      if (!statsResult.success || !statsResult.data) {
+        throw new Error(statsResult.error || '統計データの取得に失敗しました');
+      }
+
+      const statsData = statsResult.data;
+      console.log('📊 取得した統計データ:', statsData);
+
+      // 基本データと統計データをマージして完全な都道府県データを作成
+      prefectureData = basePrefectureData.map(baseData => {
+        const stats = statsData.find(stat => stat.prefectureId === baseData.id);
+        
+        return {
+          ...baseData,
+          completedCount: stats?.completedCount || 0,
+          purchasedCount: stats?.purchasedCount || 0,
+          totalSpent: stats?.totalSpent || 0,
+          averageRating: stats?.averageRating || 0,
+          lastOrderDate: stats?.lastOrderDate || null,
+          // 既存のrecordsは空配列（PrefectureModalで個別取得）
+          records: []
+        };
+      });
+
+      console.log('🗺️ 更新されたヒートマップデータ:', prefectureData);
+      
+    } catch (error) {
+      console.error('❌ 統計データの読み込みエラー:', error);
+      statsError = error instanceof Error ? error.message : '不明なエラー';
+      // エラー時は基本データを使用
+      prefectureData = basePrefectureData.map(baseData => ({
+        ...baseData,
+        completedCount: 0,
+        purchasedCount: 0,
+        totalSpent: 0,
+        averageRating: 0,
+        lastOrderDate: null,
+        records: []
+      }));
+    } finally {
+      isLoadingStats = false;
+    }
+  }
+
+  /**
+   * デバッグモードの切り替え
+   */
+  function toggleDebugMode() {
+    debugMode = !debugMode;
+    // ローカルストレージに保存
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('gourmet-journey-debug', debugMode.toString());
+    }
+    console.log(debugMode ? '🔧 デバッグモードを有効にしました' : '✅ デバッグモードを無効にしました');
+  }
+
+  /**
+   * タイトルクリック処理（隠しコマンド）
+   */
+  function handleTitleClick() {
+    titleClickCount++;
+    
+    // 既存のタイマーをクリア
+    if (titleClickTimer) {
+      clearTimeout(titleClickTimer);
+    }
+    
+    // 5回クリックでデバッグモード切り替え
+    if (titleClickCount >= 5) {
+      toggleDebugMode();
+      titleClickCount = 0;
+      return;
+    }
+    
+    // 2秒でカウントリセット
+    titleClickTimer = setTimeout(() => {
+      titleClickCount = 0;
+    }, 2000);
+  }
+
+  /**
+   * キーボードショートカット処理
+   */
+  function handleKeyDown(event: KeyboardEvent) {
+    // Ctrl+Shift+D (Windows/Linux) または Cmd+Shift+D (Mac)
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'D') {
+      event.preventDefault();
+      toggleDebugMode();
+    }
+  }
+
+  // アプリ起動時の初期化
+  onMount(() => {
+    // 統計データ読み込み
+    loadPrefectureStats();
+    
+    // デバッグモード状態をローカルストレージから復元
+    if (typeof localStorage !== 'undefined') {
+      const savedDebugMode = localStorage.getItem('gourmet-journey-debug');
+      debugMode = savedDebugMode === 'true';
+    }
+    
+    // キーボードイベントリスナー追加
+    document.addEventListener('keydown', handleKeyDown);
+    
+    // クリーンアップ
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (titleClickTimer) clearTimeout(titleClickTimer);
+    };
+  });
 
   function handlePrefectureClick(event: CustomEvent<{ prefecture: PrefectureData }>) {
     selectedPrefecture = event.detail.prefecture;
@@ -35,19 +186,89 @@
 
   function handleOpenRecordForm() {
     selectedPrefecture = null; // 都道府県未選択で開く
+    editingRecord = null; // 新規作成モード
     isRecordFormOpen = true;
   }
 
   function handleRecordFormClose() {
     isRecordFormOpen = false;
     selectedPrefecture = null;
+    editingRecord = null;
   }
 
   function handleRecordAdded(event: CustomEvent<{ record: any }>) {
     console.log('新しい記録が追加されました:', event.detail.record);
-    // TODO: 都道府県データを更新してヒートマップに反映
+    // 統計データを更新してヒートマップに反映
+    loadPrefectureStats();
     isRecordFormOpen = false;
     selectedPrefecture = null;
+  }
+
+  function handleOpenRecordList() {
+    isRecordListOpen = true;
+  }
+
+  function handleRecordListClose() {
+    isRecordListOpen = false;
+  }
+
+  function handleEditRecord(event: CustomEvent<{ record: GourmetRecord }>) {
+    editingRecord = event.detail.record;
+    selectedPrefecture = null;
+    isRecordListOpen = false;
+    isRecordFormOpen = true;
+  }
+
+  function handleRecordUpdated(event: CustomEvent<{ record: any }>) {
+    console.log('記録が更新されました:', event.detail.record);
+    // 統計データを更新してヒートマップに反映
+    loadPrefectureStats();
+    isRecordFormOpen = false;
+    editingRecord = null;
+  }
+
+  function handleDeleteRecord(event: CustomEvent<{ record: GourmetRecord }>) {
+    deletingRecord = event.detail.record;
+    isDeleteDialogOpen = true;
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deletingRecord) return;
+
+    isDeleting = true;
+
+    try {
+      const result = await deleteGourmetRecord(deletingRecord.id);
+      
+      if (result.success) {
+        console.log('記録が削除されました:', deletingRecord.productName);
+        // 統計データを更新してヒートマップに反映
+        loadPrefectureStats();
+        isDeleteDialogOpen = false;
+        deletingRecord = null;
+        
+        // 記録一覧を自動更新するため、一度閉じて再開
+        if (isRecordListOpen) {
+          isRecordListOpen = false;
+          setTimeout(() => {
+            isRecordListOpen = true;
+          }, 100);
+        }
+      } else {
+        console.error('削除に失敗しました:', result.error);
+        alert(`削除に失敗しました: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('削除エラー:', error);
+      alert(`削除中にエラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+    } finally {
+      isDeleting = false;
+    }
+  }
+
+  function handleDeleteCancel() {
+    isDeleteDialogOpen = false;
+    deletingRecord = null;
   }
 
   async function handleFirebaseTest() {
@@ -75,8 +296,14 @@
 
 <main class="app-container">
   <header class="app-header">
-    <h1 class="app-title">グルメジャーニー</h1>
+    <h1 class="app-title" onclick={handleTitleClick} role="button" tabindex="0">グルメジャーニー</h1>
     <p class="app-subtitle">全国47都道府県のご当地グルメお取り寄せ管理</p>
+    
+    {#if debugMode}
+      <div class="debug-indicator">
+        🔧 デバッグモード (Ctrl+Shift+D で切り替え)
+      </div>
+    {/if}
     
     <div class="stats-summary">
       <div class="stat-item">
@@ -119,16 +346,19 @@
         <button class="btn btn-secondary" onclick={handleOpenRecordForm}>
           📝 記録追加
         </button>
-        <button class="btn btn-secondary">
-          📊 統計表示
+        <button class="btn btn-secondary" onclick={handleOpenRecordList}>
+          📊 記録一覧
         </button>
-        <button class="btn {connectionResult?.success ? 'btn-success' : 'btn-warning'}" onclick={handleFirebaseTest} disabled={testingConnection}>
-          {testingConnection ? '🔄 テスト中...' : '🔥 Firebase接続テスト'}
-        </button>
-        {#if connectionResult}
-          <div class="connection-result {connectionResult.success ? 'success' : 'error'}">
-            {connectionResult.success ? '✅ Firebase接続成功' : `❌ 接続失敗: ${connectionResult.error}`}
-          </div>
+        
+        {#if debugMode}
+          <button class="btn {connectionResult?.success ? 'btn-success' : 'btn-warning'}" onclick={handleFirebaseTest} disabled={testingConnection}>
+            {testingConnection ? '🔄 テスト中...' : '🔥 Firebase接続テスト'}
+          </button>
+          {#if connectionResult}
+            <div class="connection-result {connectionResult.success ? 'success' : 'error'}">
+              {connectionResult.success ? '✅ Firebase接続成功' : `❌ 接続失敗: ${connectionResult.error}`}
+            </div>
+          {/if}
         {/if}
       </div>
 
@@ -169,13 +399,32 @@
     prefecture={selectedPrefecture}
     on:close={handleModalClose}
     on:addRecord={handleAddRecord}
+    on:editRecord={handleEditRecord}
+    on:deleteRecord={handleDeleteRecord}
   />
 
   <GourmetRecordForm 
     bind:isOpen={isRecordFormOpen}
     selectedPrefecture={selectedPrefecture}
+    editingRecord={editingRecord}
     on:close={handleRecordFormClose}
     on:recordAdded={handleRecordAdded}
+    on:recordUpdated={handleRecordUpdated}
+  />
+
+  <GourmetRecordList 
+    bind:isOpen={isRecordListOpen}
+    on:close={handleRecordListClose}
+    on:editRecord={handleEditRecord}
+    on:deleteRecord={handleDeleteRecord}
+  />
+
+  <DeleteConfirmDialog 
+    bind:isOpen={isDeleteDialogOpen}
+    record={deletingRecord}
+    isDeleting={isDeleting}
+    on:confirm={handleDeleteConfirm}
+    on:cancel={handleDeleteCancel}
   />
 </main>
 
@@ -200,6 +449,36 @@
     font-size: 2.5rem;
     font-weight: 700;
     text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  .app-title:hover {
+    transform: scale(1.02);
+    text-shadow: 0 3px 6px rgba(0,0,0,0.4);
+  }
+
+  .app-title:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 4px;
+  }
+
+  .debug-indicator {
+    background: rgba(255, 255, 255, 0.2);
+    color: #FFE0B2;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    animation: debugPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes debugPulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
   }
 
   .app-subtitle {
