@@ -1,0 +1,71 @@
+/**
+ * ヒートマップの色分けロジック
+ * 食事完了回数に基づく暖色系グラデーション
+ */
+
+export interface ColorConfig {
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+}
+
+export function getHeatmapColor(completedCount: number): ColorConfig {
+  // 基本の色設定
+  const baseConfig: ColorConfig = {
+    fill: '#E0E0E0', // グレー（0回）
+    stroke: '#BDBDBD',
+    strokeWidth: 1
+  };
+
+  if (completedCount === 0) {
+    return baseConfig;
+  }
+
+  // 暖色系グラデーション
+  const colors = [
+    '#FFE0B2', // 1回: 薄いオレンジ
+    '#FFB74D', // 2回: オレンジ
+    '#FF9800', // 3回: 濃いオレンジ
+    '#F44336', // 4-5回: 赤系
+    '#F44336', // 4-5回: 赤系
+    '#C62828'  // 6回以上: 深紅
+  ];
+
+  let colorIndex: number;
+  if (completedCount <= 6) {
+    colorIndex = Math.min(completedCount - 1, colors.length - 1);
+  } else {
+    // 10回超の場合は相対評価（後で実装）
+    colorIndex = colors.length - 1;
+  }
+
+  return {
+    fill: colors[colorIndex],
+    stroke: '#9E9E9E',
+    strokeWidth: 1.5
+  };
+}
+
+/**
+ * ホバー時の色設定
+ */
+export function getHoverColor(completedCount: number): ColorConfig {
+  const baseColor = getHeatmapColor(completedCount);
+  
+  return {
+    fill: baseColor.fill,
+    stroke: '#333333',
+    strokeWidth: 2.5
+  };
+}
+
+/**
+ * 選択時の色設定
+ */
+export function getSelectedColor(): ColorConfig {
+  return {
+    fill: '#2196F3', // 青色
+    stroke: '#1976D2',
+    strokeWidth: 3
+  };
+}
