@@ -64,8 +64,8 @@ export function getHoverColor(completedCount: number): ColorConfig {
  */
 export function getSelectedColor(): ColorConfig {
   return {
-    fill: '#2196F3', // 青色
-    stroke: '#1976D2',
+    fill: '#FF5722', // 深いオレンジ赤（暖色系の強調色）
+    stroke: '#D84315', // より深い赤オレンジ
     strokeWidth: 3
   };
 }

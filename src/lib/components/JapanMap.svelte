@@ -207,7 +207,7 @@
   }
 
   :global(.prefecture:focus) {
-    outline: 2px solid #2196F3;
+    outline: 2px solid #FF5722;
     outline-offset: 2px;
   }
 
