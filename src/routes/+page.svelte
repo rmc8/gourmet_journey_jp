@@ -1,11 +1,13 @@
 <script lang="ts">
   import JapanMap from '$lib/components/JapanMap.svelte';
   import PrefectureModal from '$lib/components/PrefectureModal.svelte';
+  import GourmetRecordForm from '$lib/components/GourmetRecordForm.svelte';
   import { getAllPrefectureData, type PrefectureData } from '$lib/data/mockData';
   import { testFirestoreConnection } from '$lib/firebase/firestore';
 
   let prefectureData = getAllPrefectureData();
   let isModalOpen = $state(false);
+  let isRecordFormOpen = $state(false);
   let selectedPrefecture: PrefectureData | null = $state(null);
   let hoveredPrefecture: PrefectureData | null = $state(null);
   let testingConnection = $state(false);
@@ -26,9 +28,26 @@
   }
 
   function handleAddRecord(event: CustomEvent<{ prefecture: PrefectureData }>) {
-    // TODO: 記録追加フォームの実装
-    console.log('記録追加:', event.detail.prefecture.name);
-    handleModalClose();
+    selectedPrefecture = event.detail.prefecture;
+    isModalOpen = false;
+    isRecordFormOpen = true;
+  }
+
+  function handleOpenRecordForm() {
+    selectedPrefecture = null; // 都道府県未選択で開く
+    isRecordFormOpen = true;
+  }
+
+  function handleRecordFormClose() {
+    isRecordFormOpen = false;
+    selectedPrefecture = null;
+  }
+
+  function handleRecordAdded(event: CustomEvent<{ record: any }>) {
+    console.log('新しい記録が追加されました:', event.detail.record);
+    // TODO: 都道府県データを更新してヒートマップに反映
+    isRecordFormOpen = false;
+    selectedPrefecture = null;
   }
 
   async function handleFirebaseTest() {
@@ -97,7 +116,7 @@
         <button class="btn btn-primary">
           🎲 ルーレット
         </button>
-        <button class="btn btn-secondary">
+        <button class="btn btn-secondary" onclick={handleOpenRecordForm}>
           📝 記録追加
         </button>
         <button class="btn btn-secondary">
@@ -150,6 +169,13 @@
     prefecture={selectedPrefecture}
     on:close={handleModalClose}
     on:addRecord={handleAddRecord}
+  />
+
+  <GourmetRecordForm 
+    bind:isOpen={isRecordFormOpen}
+    selectedPrefecture={selectedPrefecture}
+    on:close={handleRecordFormClose}
+    on:recordAdded={handleRecordAdded}
   />
 </main>
 
