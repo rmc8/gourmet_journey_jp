@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import JapanMap from '$lib/components/JapanMap.svelte';
   import PrefectureModal from '$lib/components/PrefectureModal.svelte';
+  import RouletteModalV2 from '$lib/components/RouletteModalV2.svelte';
   import GourmetRecordForm from '$lib/components/GourmetRecordForm.svelte';
   import GourmetRecordList from '$lib/components/GourmetRecordList.svelte';
   import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
@@ -17,6 +18,7 @@
   
   // UIの状態管理
   let isModalOpen = $state(false);
+  let isRouletteOpen = $state(false);
   let isRecordFormOpen = $state(false);
   let isRecordListOpen = $state(false);
   let isDeleteDialogOpen = $state(false);
@@ -385,6 +387,18 @@
     deletingRecord = null;
   }
 
+  function handleOpenRoulette() {
+    isRouletteOpen = true;
+  }
+
+  // ルーレット結果からの都道府県選択処理
+  function handleRouletteResult(event: Event) {
+    const customEvent = event as CustomEvent<{ prefecture: PrefectureData }>;
+    selectedPrefecture = customEvent.detail.prefecture;
+    isRouletteOpen = false;
+    isModalOpen = true;
+  }
+
   async function handleFirebaseTest() {
     testingConnection = true;
     connectionResult = null;
@@ -468,7 +482,7 @@
 
     <div class="sidebar">
       <div class="action-buttons">
-        <button class="btn btn-accent">
+        <button class="btn btn-accent" onclick={handleOpenRoulette}>
           🎲 ルーレット
         </button>
         <button class="btn btn-primary" onclick={handleOpenRecordForm}>
@@ -546,6 +560,14 @@
     on:editRecord={handleEditRecord}
     on:deleteRecord={handleDeleteRecord}
   />
+
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div onprefectureSelected={handleRouletteResult}>
+    <RouletteModalV2 
+      bind:isOpen={isRouletteOpen}
+      {prefectureData}
+    />
+  </div>
 
   <DeleteConfirmDialog 
     bind:isOpen={isDeleteDialogOpen}
