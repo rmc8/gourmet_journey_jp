@@ -12,13 +12,15 @@
   "app": {
     "windows": [
       {
-        "title": "gourmet_journey_jp",
-        "width": 800,
-        "height": 600
+        "title": "グルメジャーニー",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src 'self' https://raw.githubusercontent.com https://console.firebase.google.com https://*.firebaseio.com https://*.googleapis.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:"
     }
   },
   "bundle": {

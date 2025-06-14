@@ -1,7 +1,8 @@
 {
   "name": "gourmet_journey_jp",
+  "displayName": "グルメジャーニー",
   "version": "0.1.0",
-  "description": "",
+  "description": "全国47都道府県のご当地グルメお取り寄せ管理アプリ",
   "type": "module",
   "scripts": {
     "dev": "vite dev",
@@ -9,21 +10,25 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "firebase:emulators": "firebase emulators:start",
+    "firebase:deploy": "firebase deploy --only firestore:rules",
+    "firebase:setup": "firebase init firestore"
   },
   "license": "MIT",
   "dependencies": {
     "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-opener": "^2"
+    "@tauri-apps/plugin-opener": "^2",
+    "firebase": "^11.9.1"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.6",
     "@sveltejs/kit": "^2.9.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@tauri-apps/cli": "^2.5.0",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "typescript": "~5.6.2",
-    "vite": "^6.0.3",
-    "@tauri-apps/cli": "^2"
+    "vite": "^6.0.3"
   }
 }

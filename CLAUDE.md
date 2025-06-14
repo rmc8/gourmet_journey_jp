@@ -6,7 +6,7 @@
 
 ## プロジェクト概要
 
-全国47都道府県のご当地グルメのお取り寄せを管理するデスクトップアプリケーションです。Tauri + SvelteKit + TypeScriptで構築されています。
+**グルメジャーニー**は、全国47都道府県のご当地グルメのお取り寄せを管理するデスクトップアプリケーションです。Tauri + SvelteKit + TypeScriptで構築されています。
 
 ### アプリの目的
 全都道府県の食べ物を取り寄せたグルメを楽しむことを目標とし、そのお取り寄せ状況を効率的に管理・追跡するためのアプリケーションです。
@@ -64,7 +64,14 @@
 - `src/` ディレクトリに配置
 - `@sveltejs/adapter-static` を使用し、`index.html` にフォールバック
 - Tauri統合用の固定ポート（1420）でViteビルドツール使用
-- TypeScriptサポート付きSvelte 5
+- **Svelte 5** TypeScriptサポート付き
+
+#### Svelte 5 重要事項
+- **runesを使用**: `$state`, `$derived`, `$props`, `$bindable`, `$effect`
+- **新しいイベント構文**: `onclick={handler}`, `onkeydown={handler}`, `onsubmit={handler}`
+- **旧構文使用禁止**: `on:click`, `on:keydown`, `let:`, `export let`, `$$props`
+- **props定義**: `let { prop = $bindable() } = $props()`
+- **リアクティブ宣言**: `let derived = $derived(...)` または `let derived = $derived.by(() => ...)`
 
 ### バックエンド（Tauri）
 - Rustベースのデスクトップアプリケーションフレームワーク
@@ -106,3 +113,24 @@
 4. Pull Request作成（Issueを参照）
 5. レビュー・マージ
 6. Issueクローズ
+
+## ドキュメント管理
+
+### 要件定義ドキュメント
+プロジェクトの要件定義は `docs/requirements/` ディレクトリで管理：
+
+- **01_initial_hearing.md**: 基本要件ヒアリング結果
+- **02_detailed_hearing.md**: 詳細機能仕様ヒアリング結果  
+- **03_technical_hearing.md**: 技術仕様詳細ヒアリング結果
+- **04_ui_ux_hearing.md**: UI/UX設計詳細ヒアリング結果
+- **requirements_summary.md**: 最終統合要件定義書
+
+### ドキュメント更新方針
+- 要件変更時は該当ヒアリングドキュメントを更新
+- 重要な変更は requirements_summary.md にも反映
+- 技術仕様変更は関連する GitHub Issue も合わせて更新
+
+### Firebase 設定管理
+- 環境変数ファイル（.env）での設定管理
+- ビルド時に特定のFirebaseプロジェクトを指定
+- 認証なし・データ完全共有の方針
