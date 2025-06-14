@@ -2,11 +2,14 @@
   import JapanMap from '$lib/components/JapanMap.svelte';
   import PrefectureModal from '$lib/components/PrefectureModal.svelte';
   import { getAllPrefectureData, type PrefectureData } from '$lib/data/mockData';
+  import { testFirestoreConnection } from '$lib/firebase/firestore';
 
   let prefectureData = getAllPrefectureData();
   let isModalOpen = $state(false);
   let selectedPrefecture: PrefectureData | null = $state(null);
   let hoveredPrefecture: PrefectureData | null = $state(null);
+  let testingConnection = $state(false);
+  let connectionResult = $state<{success: boolean, error?: string} | null>(null);
 
   function handlePrefectureClick(event: CustomEvent<{ prefecture: PrefectureData }>) {
     selectedPrefecture = event.detail.prefecture;
@@ -26,6 +29,23 @@
     // TODO: 記録追加フォームの実装
     console.log('記録追加:', event.detail.prefecture.name);
     handleModalClose();
+  }
+
+  async function handleFirebaseTest() {
+    testingConnection = true;
+    connectionResult = null;
+    
+    try {
+      const result = await testFirestoreConnection();
+      connectionResult = result;
+    } catch (error) {
+      connectionResult = {
+        success: false,
+        error: error instanceof Error ? error.message : '不明なエラー'
+      };
+    } finally {
+      testingConnection = false;
+    }
   }
 
   // 統計情報の計算
@@ -83,6 +103,14 @@
         <button class="btn btn-secondary">
           📊 統計表示
         </button>
+        <button class="btn {connectionResult?.success ? 'btn-success' : 'btn-warning'}" onclick={handleFirebaseTest} disabled={testingConnection}>
+          {testingConnection ? '🔄 テスト中...' : '🔥 Firebase接続テスト'}
+        </button>
+        {#if connectionResult}
+          <div class="connection-result {connectionResult.success ? 'success' : 'error'}">
+            {connectionResult.success ? '✅ Firebase接続成功' : `❌ 接続失敗: ${connectionResult.error}`}
+          </div>
+        {/if}
       </div>
 
       <div class="color-legend">
@@ -271,6 +299,48 @@
     color: var(--neutral-900);
     transform: translateY(-1px);
     box-shadow: 0 2px 8px var(--shadow-neutral);
+  }
+
+  .btn-warning {
+    background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+    color: var(--white);
+  }
+
+  .btn-warning:hover {
+    background: linear-gradient(135deg, #F57C00 0%, #E65100 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+  }
+
+  .btn-success {
+    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    color: var(--white);
+  }
+
+  .btn-success:hover {
+    background: linear-gradient(135deg, #388E3C 0%, #2E7D32 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  }
+
+  .connection-result {
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  .connection-result.success {
+    background: rgba(76, 175, 80, 0.1);
+    color: #2E7D32;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+  }
+
+  .connection-result.error {
+    background: rgba(244, 67, 54, 0.1);
+    color: #C62828;
+    border: 1px solid rgba(244, 67, 54, 0.3);
   }
 
   .color-legend {
