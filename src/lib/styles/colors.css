@@ -1,0 +1,128 @@
+/* グルメジャーニー - カラーパレット */
+:root {
+  /* プライマリカラー (メインオレンジ系) */
+  --primary-color: #ff7043;
+  --primary-dark: #ff5722;
+  --primary-light: #ffab91;
+  --primary-lighter: #ffccbc;
+
+  /* セカンダリカラー (アクセントオレンジ系) */
+  --secondary-color: #ffa726;
+  --secondary-dark: #f57c00;
+  --secondary-light: #ffcc02;
+  --secondary-lighter: #fff3c4;
+
+  /* アクセントカラー (グリーン系) */
+  --accent-color: #4caf50;
+  --accent-dark: #388e3c;
+  --accent-light: #81c784;
+  --accent-lighter: #c8e6c9;
+
+  /* エラー・警告色 */
+  --error-color: #f44336;
+  --error-dark: #d32f2f;
+  --error-light: #ef5350;
+  --warning-color: #ff9800;
+  --warning-dark: #f57c00;
+  --warning-light: #ffb74d;
+  --success-color: var(--accent-color);
+  --info-color: #2196f3;
+
+  /* ニュートラルカラー (グレー系) */
+  --neutral-50: #fafafa;
+  --neutral-100: #f8f9fa;
+  --neutral-200: #e9ecef;
+  --neutral-300: #dee2e6;
+  --neutral-400: #ced4da;
+  --neutral-500: #adb5bd;
+  --neutral-600: #6c757d;
+  --neutral-700: #495057;
+  --neutral-800: #343a40;
+  --neutral-900: #212529;
+  --white: #ffffff;
+  --black: #000000;
+
+  /* シャドウ */
+  --shadow-primary: rgba(255, 112, 67, 0.3);
+  --shadow-primary-light: rgba(255, 112, 67, 0.15);
+  --shadow-secondary: rgba(255, 167, 38, 0.25);
+  --shadow-secondary-light: rgba(255, 167, 38, 0.12);
+  --shadow-neutral: rgba(0, 0, 0, 0.1);
+  --shadow-neutral-light: rgba(0, 0, 0, 0.05);
+  --shadow-dark: rgba(0, 0, 0, 0.2);
+
+  /* ボーダー */
+  --border-light: var(--neutral-200);
+  --border-medium: var(--neutral-300);
+  --border-dark: var(--neutral-400);
+
+  /* 背景色 */
+  --bg-primary: var(--white);
+  --bg-secondary: var(--neutral-50);
+  --bg-tertiary: var(--neutral-100);
+  --bg-overlay: rgba(0, 0, 0, 0.5);
+
+  /* テキストカラー */
+  --text-primary: var(--neutral-900);
+  --text-secondary: var(--neutral-700);
+  --text-tertiary: var(--neutral-600);
+  --text-muted: var(--neutral-500);
+  --text-inverse: var(--white);
+}
+
+/* ダークモード */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* ニュートラルカラーの反転 */
+    --neutral-50: #212529;
+    --neutral-100: #1a1a1a;
+    --neutral-200: #2d2d2d;
+    --neutral-300: #404040;
+    --neutral-400: #505050;
+    --neutral-500: #6c6c6c;
+    --neutral-600: #8c8c8c;
+    --neutral-700: #adadad;
+    --neutral-800: #e0e0e0;
+    --neutral-900: #f5f5f5;
+    --white: #2d2d2d;
+    --black: #ffffff;
+
+    /* シャドウの調整 */
+    --shadow-neutral: rgba(0, 0, 0, 0.3);
+    --shadow-neutral-light: rgba(0, 0, 0, 0.15);
+    --shadow-dark: rgba(0, 0, 0, 0.4);
+
+    /* 背景色 */
+    --bg-primary: var(--neutral-200);
+    --bg-secondary: var(--neutral-100);
+    --bg-tertiary: var(--neutral-50);
+    --bg-overlay: rgba(0, 0, 0, 0.7);
+
+    /* テキストカラー */
+    --text-primary: var(--neutral-900);
+    --text-secondary: var(--neutral-800);
+    --text-tertiary: var(--neutral-700);
+    --text-muted: var(--neutral-600);
+    --text-inverse: var(--neutral-900);
+  }
+}
+
+/* ユーティリティクラス */
+.text-primary { color: var(--primary-color); }
+.text-secondary { color: var(--secondary-color); }
+.text-accent { color: var(--accent-color); }
+.text-error { color: var(--error-color); }
+.text-warning { color: var(--warning-color); }
+.text-success { color: var(--success-color); }
+.text-info { color: var(--info-color); }
+
+.bg-primary { background-color: var(--primary-color); }
+.bg-secondary { background-color: var(--secondary-color); }
+.bg-accent { background-color: var(--accent-color); }
+.bg-neutral { background-color: var(--neutral-100); }
+
+.border-primary { border-color: var(--primary-color); }
+.border-secondary { border-color: var(--secondary-color); }
+.border-light { border-color: var(--border-light); }
+.border-medium { border-color: var(--border-medium); }
+.border-dark { border-color: var(--border-dark); }

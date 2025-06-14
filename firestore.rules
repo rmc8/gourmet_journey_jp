@@ -1,0 +1,25 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 全てのドキュメントに対して読み書きを許可（認証なし）
+    // ⚠️ この設定は個人利用・プロトタイプ用です
+    // 本番環境では適切な認証・認可ルールを設定してください
+    match /{document=**} {
+      allow read, write: if true;
+    }
+
+    // 将来的な拡張用：認証ベースのルール例（コメントアウト）
+    /*
+    // 認証されたユーザーのみアクセス可能
+    match /gourmet_records/{recordId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ユーザー固有のデータへのアクセス制限
+    match /users/{userId}/records/{recordId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    */
+  }
+}
