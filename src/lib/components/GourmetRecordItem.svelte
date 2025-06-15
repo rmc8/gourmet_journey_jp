@@ -112,14 +112,14 @@
 
   <div class="record-footer">
     <div class="record-links">
-      {#if record.productUrl}
-        <a href={record.productUrl} target="_blank" rel="noopener noreferrer" class="link-btn">
+      {#if record.shopUrl}
+        <a href={record.shopUrl} target="_blank" rel="noopener noreferrer" class="link-btn">
           🔗 商品ページ
         </a>
       {/if}
-      {#if record.shopUrl}
-        <a href={record.shopUrl} target="_blank" rel="noopener noreferrer" class="link-btn">
-          🏪 ショップ
+      {#if record.productUrl}
+        <a href={record.productUrl} target="_blank" rel="noopener noreferrer" class="link-btn">
+          🖼️ 商品画像
         </a>
       {/if}
     </div>
