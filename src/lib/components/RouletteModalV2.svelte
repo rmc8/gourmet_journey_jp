@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { PrefectureData } from '../data/mockData';
   import { generatePerplexitySearchUrl } from '../utils/searchUtils';
+  import { openSearchLink } from '../utils/linkOpener';
 
   interface Props {
     isOpen: boolean;
@@ -187,25 +188,13 @@
   }
 
   /**
-   * 検索リンクを開く（fallback付き）
+   * 検索リンクを開く（プラットフォーム対応版）
    */
-  function openSearchLink(service: 'yahoo' | 'rakuten' | 'perplexity') {
+  async function handleSearchLink(service: 'yahoo' | 'rakuten' | 'perplexity') {
     if (!result) return;
 
     const url = generateSearchUrl(result.selected, service);
-    
-    try {
-      // ブラウザで開く
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      // フォールバック：クリップボードにコピー
-      try {
-        navigator.clipboard.writeText(url);
-        alert(`URLをクリップボードにコピーしました:\n${url}`);
-      } catch (clipError) {
-        alert(`外部リンクを開けませんでした:\n${url}`);
-      }
-    }
+    await openSearchLink(service, url);
   }
 
   /**
@@ -333,13 +322,13 @@
             <div class="search-section">
               <h4>🔍 商品を探してみましょう</h4>
               <div class="search-buttons">
-                <button class="search-button perplexity-button" onclick={() => openSearchLink('perplexity')}>
+                <button class="search-button perplexity-button" onclick={() => handleSearchLink('perplexity')}>
                   🔍 Perplexity
                 </button>
-                <button class="search-button" onclick={() => openSearchLink('yahoo')}>
+                <button class="search-button" onclick={() => handleSearchLink('yahoo')}>
                   🛒 Yahoo!ショッピング
                 </button>
-                <button class="search-button" onclick={() => openSearchLink('rakuten')}>
+                <button class="search-button" onclick={() => handleSearchLink('rakuten')}>
                   🛍️ 楽天市場
                 </button>
               </div>
