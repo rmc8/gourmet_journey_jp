@@ -47,6 +47,7 @@
 
   let isSubmitting = $state(false);
   let submitError = $state<string | null>(null);
+  let hoveredRating = $state(0);
 
   const prefectureData = getAllPrefectureData();
 
@@ -248,6 +249,18 @@
   function handleRatingClick(rating: number) {
     formData.rating = rating;
   }
+
+  function handleStarMouseEnter(rating: number) {
+    if (!isSubmitting) {
+      hoveredRating = rating;
+    }
+  }
+
+  function handleStarMouseLeave() {
+    if (!isSubmitting) {
+      hoveredRating = 0;
+    }
+  }
 </script>
 
 {#if isOpen}
@@ -377,6 +390,9 @@
                   type="button"
                   class="star-button"
                   class:active={star <= formData.rating}
+                  class:hovered={hoveredRating > 0 && star <= hoveredRating}
+                  onmouseenter={() => handleStarMouseEnter(star)}
+                  onmouseleave={handleStarMouseLeave}
                   onclick={() => handleRatingClick(star)}
                   disabled={isSubmitting}
                   aria-label="{star}つ星"
@@ -437,28 +453,28 @@
           />
         </div>
 
-        <!-- ショップURL -->
+        <!-- 商品ページURL -->
         <div class="form-group">
-          <label for="shopUrl" class="form-label">ショップURL</label>
+          <label for="shopUrl" class="form-label">商品ページURL</label>
           <input
             id="shopUrl"
             type="url"
             class="form-input"
             bind:value={formData.shopUrl}
-            placeholder="https://example.com/shop"
+            placeholder="https://example.com/product/12345"
             disabled={isSubmitting}
           />
         </div>
 
-        <!-- 商品URL -->
+        <!-- 商品画像URL -->
         <div class="form-group">
-          <label for="productUrl" class="form-label">商品URL</label>
+          <label for="productUrl" class="form-label">商品画像URL</label>
           <input
             id="productUrl"
             type="url"
             class="form-input"
             bind:value={formData.productUrl}
-            placeholder="https://example.com/product"
+            placeholder="https://example.com/images/product.jpg"
             disabled={isSubmitting}
           />
         </div>
@@ -680,8 +696,12 @@
     color: #ffa000;
   }
 
+  .star-button.hovered {
+    color: #ffb74d;
+  }
+
   .star-button:hover:not(:disabled) {
-    color: #ffa000;
+    color: inherit;
   }
 
   .star-button:disabled {
