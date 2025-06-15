@@ -6,9 +6,11 @@
   import GourmetRecordForm from '$lib/components/GourmetRecordForm.svelte';
   import GourmetRecordList from '$lib/components/GourmetRecordList.svelte';
   import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
+  import ToastNotification from '$lib/components/ToastNotification.svelte';
   import { getAllPrefectureData, type PrefectureData, type GourmetRecord } from '$lib/data/mockData';
   import { testFirestoreConnection, deleteGourmetRecord, getPrefectureStats, initializeFirebase } from '$lib/firebase/firestore';
   import type { PrefectureStats } from '$lib/firebase/types';
+  import { getPlatformInfo } from '$lib/utils/linkOpener';
 
   // 基本の都道府県データ（テンプレート）
   let basePrefectureData = getAllPrefectureData();
@@ -29,6 +31,9 @@
   let testingConnection = $state(false);
   let connectionResult = $state<{success: boolean, error?: string} | null>(null);
   let isDeleting = $state(false);
+  let toastMessage = $state('');
+  let toastType = $state<'success' | 'error' | 'info'>('success');
+  let showToast = $state(false);
   
   // 統計データの読み込み状態
   let isLoadingStats = $state(false);
@@ -37,7 +42,7 @@
   // デバッグモード管理
   let debugMode = $state(false);
   let titleClickCount = $state(0);
-  let titleClickTimer: number | null = null;
+  let titleClickTimer: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * Firestore から都道府県別統計を取得してヒートマップデータを更新
@@ -135,6 +140,16 @@
   }
 
   /**
+   * タイトルキーボード操作
+   */
+  function handleTitleKeyDown(event: KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleTitleClick();
+    }
+  }
+
+  /**
    * キーボードショートカット処理
    */
   function handleKeyDown(event: KeyboardEvent) {
@@ -202,6 +217,12 @@
 
   function handleRecordAdded(event: CustomEvent<{ record: any }>) {
     console.log('新しい記録が追加されました:', event.detail.record);
+    
+    // 成功通知を表示
+    toastMessage = `「${event.detail.record.productName}」を追加しました`;
+    toastType = 'success';
+    showToast = true;
+    
     // 統計データを更新してヒートマップに反映
     loadPrefectureStats();
     isRecordFormOpen = false;
@@ -225,6 +246,12 @@
 
   function handleRecordUpdated(event: CustomEvent<{ record: any }>) {
     console.log('記録が更新されました:', event.detail.record);
+    
+    // 成功通知を表示
+    toastMessage = `「${event.detail.record.productName}」を更新しました`;
+    toastType = 'success';
+    showToast = true;
+    
     // 統計データを更新してヒートマップに反映
     loadPrefectureStats();
     isRecordFormOpen = false;
@@ -232,7 +259,18 @@
   }
 
   function handleDeleteRecord(event: CustomEvent<{ record: GourmetRecord }>) {
-    deletingRecord = event.detail.record;
+    // 都道府県モーダルから直接削除された場合は統計のみ更新
+    // 他のリスト画面からの場合は削除確認ダイアログを表示
+    const record = event.detail.record;
+    
+    // PrefectureModalからの削除の場合は統計更新のみ
+    if (isModalOpen) {
+      loadPrefectureStats(); // ヒートマップ更新
+      return;
+    }
+    
+    // 他の画面からの削除確認
+    deletingRecord = record;
     isDeleteDialogOpen = true;
   }
 
@@ -246,6 +284,12 @@
       
       if (result.success) {
         console.log('記録が削除されました:', deletingRecord.productName);
+        
+        // 成功通知を表示
+        toastMessage = `「${deletingRecord.productName}」を削除しました`;
+        toastType = 'success';
+        showToast = true;
+        
         // 統計データを更新してヒートマップに反映
         loadPrefectureStats();
         isDeleteDialogOpen = false;
@@ -260,11 +304,15 @@
         }
       } else {
         console.error('削除に失敗しました:', result.error);
-        alert(`削除に失敗しました: ${result.error}`);
+        toastMessage = `削除に失敗しました: ${result.error}`;
+        toastType = 'error';
+        showToast = true;
       }
     } catch (error) {
       console.error('削除エラー:', error);
-      alert(`削除中にエラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+      toastMessage = `削除中にエラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`;
+      toastType = 'error';
+      showToast = true;
     } finally {
       isDeleting = false;
     }
@@ -304,6 +352,15 @@
     }
   }
 
+  function handlePlatformTest() {
+    const platformInfo = getPlatformInfo();
+    alert(`プラットフォーム情報:
+Platform: ${platformInfo.platform}
+Tauri: ${platformInfo.isTauri ? 'Yes' : 'No'}
+Touch: ${platformInfo.isTouch ? 'Yes' : 'No'}
+UserAgent: ${platformInfo.userAgent}`);
+  }
+
   // 統計情報の計算
   let totalCompleted = $derived(prefectureData.reduce((sum, p) => sum + p.completedCount, 0));
   let totalPurchased = $derived(prefectureData.reduce((sum, p) => sum + p.purchasedCount, 0));
@@ -313,8 +370,13 @@
 
 <main class="app-container">
   <header class="app-header">
-    <h1 class="app-title" onclick={handleTitleClick} role="button" tabindex="0">グルメジャーニー</h1>
-    <p class="app-subtitle">全国47都道府県のご当地グルメお取り寄せ管理</p>
+    <div class="header-top">
+      <img src="/logo/logo.png" alt="グルメジャーニー" class="app-logo" />
+      <div class="title-section">
+        <button class="app-title" onclick={handleTitleClick} onkeydown={handleTitleKeyDown}>グルメジャーニー</button>
+        <p class="app-subtitle">全国47都道府県のご当地グルメお取り寄せ管理</p>
+      </div>
+    </div>
     
     {#if debugMode}
       <div class="debug-indicator">
@@ -372,6 +434,9 @@
         {#if debugMode}
           <button class="btn {connectionResult?.success ? 'btn-success' : 'btn-warning'}" onclick={handleFirebaseTest} disabled={testingConnection}>
             {testingConnection ? '🔄 テスト中...' : '🔥 Firebase接続テスト'}
+          </button>
+          <button class="btn btn-info" onclick={handlePlatformTest}>
+            🔍 プラットフォーム情報
           </button>
           {#if connectionResult}
             <div class="connection-result {connectionResult.success ? 'success' : 'error'}">
@@ -438,13 +503,11 @@
     on:deleteRecord={handleDeleteRecord}
   />
 
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div onprefectureSelected={handleRouletteResult}>
-    <RouletteModalV2 
-      bind:isOpen={isRouletteOpen}
-      {prefectureData}
-    />
-  </div>
+  <RouletteModalV2 
+    bind:isOpen={isRouletteOpen}
+    {prefectureData}
+    on:prefectureSelected={handleRouletteResult}
+  />
 
   <DeleteConfirmDialog 
     bind:isOpen={isDeleteDialogOpen}
@@ -452,6 +515,12 @@
     isDeleting={isDeleting}
     on:confirm={handleDeleteConfirm}
     on:cancel={handleDeleteCancel}
+  />
+
+  <ToastNotification 
+    message={toastMessage} 
+    type={toastType} 
+    bind:visible={showToast} 
   />
 </main>
 
@@ -471,6 +540,33 @@
     box-shadow: 0 4px 20px var(--shadow-primary);
   }
 
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .app-logo {
+    height: 60px;
+    width: auto;
+    border-radius: 8px;
+    transition: transform 0.3s ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+
+  .app-logo:hover {
+    transform: scale(1.05);
+  }
+
+  .title-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
   .app-title {
     margin: 0 0 0.5rem 0;
     font-size: 2.5rem;
@@ -479,6 +575,12 @@
     cursor: pointer;
     transition: all 0.2s ease;
     user-select: none;
+    /* ボタン要素のデフォルトスタイルをリセット */
+    background: transparent;
+    border: none;
+    color: var(--white);
+    padding: 0;
+    font-family: inherit;
   }
 
   .app-title:hover {
@@ -509,7 +611,7 @@
   }
 
   .app-subtitle {
-    margin: 0 0 2rem 0;
+    margin: 0;
     font-size: 1.1rem;
     opacity: 0.9;
   }
@@ -629,18 +731,6 @@
     box-shadow: 0 4px 12px rgba(255, 143, 0, 0.3);
   }
 
-  .btn-secondary {
-    background: var(--neutral-200);
-    color: var(--neutral-800);
-    border: 1px solid var(--neutral-300);
-  }
-
-  .btn-secondary:hover {
-    background: var(--neutral-300);
-    color: var(--neutral-900);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px var(--shadow-neutral);
-  }
 
   .btn-secondary-warm {
     background: linear-gradient(135deg, #FFAB40 0%, #FF8F00 100%);
@@ -687,6 +777,17 @@
     background: linear-gradient(135deg, #388E3C 0%, #2E7D32 100%);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  }
+
+  .btn-info {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: var(--white);
+  }
+
+  .btn-info:hover {
+    background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
   }
 
   .connection-result {
@@ -770,6 +871,21 @@
   @media (max-width: 768px) {
     .app-header {
       padding: 1.5rem;
+    }
+
+    .header-top {
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .app-logo {
+      height: 50px;
+    }
+
+    .title-section {
+      align-items: center;
+      text-align: center;
     }
 
     .app-title {

@@ -47,6 +47,7 @@
 
   let isSubmitting = $state(false);
   let submitError = $state<string | null>(null);
+  let hoveredRating = $state(0);
 
   const prefectureData = getAllPrefectureData();
 
@@ -248,6 +249,18 @@
   function handleRatingClick(rating: number) {
     formData.rating = rating;
   }
+
+  function handleStarMouseEnter(rating: number) {
+    if (!isSubmitting) {
+      hoveredRating = rating;
+    }
+  }
+
+  function handleStarMouseLeave() {
+    if (!isSubmitting) {
+      hoveredRating = 0;
+    }
+  }
 </script>
 
 {#if isOpen}
@@ -377,6 +390,9 @@
                   type="button"
                   class="star-button"
                   class:active={star <= formData.rating}
+                  class:hovered={hoveredRating > 0 && star <= hoveredRating}
+                  onmouseenter={() => handleStarMouseEnter(star)}
+                  onmouseleave={handleStarMouseLeave}
                   onclick={() => handleRatingClick(star)}
                   disabled={isSubmitting}
                   aria-label="{star}つ星"
@@ -437,30 +453,48 @@
           />
         </div>
 
-        <!-- ショップURL -->
+        <!-- 商品ページURL -->
         <div class="form-group">
-          <label for="shopUrl" class="form-label">ショップURL</label>
+          <label for="shopUrl" class="form-label">商品ページURL</label>
           <input
             id="shopUrl"
             type="url"
             class="form-input"
             bind:value={formData.shopUrl}
-            placeholder="https://example.com/shop"
+            placeholder="https://example.com/product/12345"
             disabled={isSubmitting}
           />
         </div>
 
-        <!-- 商品URL -->
+        <!-- 商品画像URL -->
         <div class="form-group">
-          <label for="productUrl" class="form-label">商品URL</label>
+          <label for="productUrl" class="form-label">商品画像URL</label>
           <input
             id="productUrl"
             type="url"
             class="form-input"
             bind:value={formData.productUrl}
-            placeholder="https://example.com/product"
+            placeholder="https://example.com/images/product.jpg"
             disabled={isSubmitting}
           />
+          {#if formData.productUrl.trim()}
+            <div class="image-preview">
+              <img 
+                src={formData.productUrl} 
+                alt="商品画像プレビュー"
+                class="preview-image"
+                loading="lazy"
+                onerror={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling.style.display = 'flex';
+                }}
+              />
+              <div class="preview-error" style="display: none;">
+                <span class="error-icon">⚠️</span>
+                <span class="error-text">画像を読み込めません</span>
+              </div>
+            </div>
+          {/if}
         </div>
 
         <!-- メモ -->
@@ -680,8 +714,12 @@
     color: #ffa000;
   }
 
+  .star-button.hovered {
+    color: #ffb74d;
+  }
+
   .star-button:hover:not(:disabled) {
-    color: #ffa000;
+    color: inherit;
   }
 
   .star-button:disabled {
@@ -703,6 +741,42 @@
 
   .rating-reset:hover:not(:disabled) {
     background-color: #f5f5f5;
+  }
+
+  .image-preview {
+    margin-top: 12px;
+    text-align: center;
+  }
+
+  .preview-image {
+    max-width: 100%;
+    max-height: 150px;
+    width: auto;
+    height: auto;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+  }
+
+  .preview-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 6px;
+    color: #856404;
+  }
+
+  .preview-error .error-icon {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+  }
+
+  .preview-error .error-text {
+    font-size: 0.85rem;
   }
 
   .modal-footer {

@@ -2,8 +2,9 @@
   import { createEventDispatcher } from 'svelte';
   import { onMount } from 'svelte';
   import type { PrefectureData, GourmetRecord } from '../data/mockData';
-  import { getGourmetRecords } from '../firebase/firestore';
+  import { getGourmetRecords, deleteGourmetRecord } from '../firebase/firestore';
   import { convertFromFirestoreRecord } from '../firebase';
+  import ToastNotification from './ToastNotification.svelte';
 
   let { 
     isOpen = $bindable(false),
@@ -23,6 +24,10 @@
   let prefectureRecords: GourmetRecord[] = $state([]);
   let isLoading = $state(false);
   let error = $state<string | null>(null);
+  let isDeleting = $state(false);
+  let toastMessage = $state('');
+  let toastType = $state<'success' | 'error' | 'info'>('success');
+  let showToast = $state(false);
 
   // 県別統計の計算
   let stats = $derived.by(() => {
@@ -79,8 +84,39 @@
     dispatch('editRecord', { record });
   }
 
-  function handleDeleteRecord(record: GourmetRecord) {
-    dispatch('deleteRecord', { record });
+  async function handleDeleteRecord(record: GourmetRecord) {
+    if (!confirm(`「${record.productName}」の記録を削除しますか？`)) {
+      return;
+    }
+
+    isDeleting = true;
+
+    try {
+      const result = await deleteGourmetRecord(record.id);
+      
+      if (result.success) {
+        // ローカルの記録リストから即座に削除
+        prefectureRecords = prefectureRecords.filter(r => r.id !== record.id);
+        
+        // 成功通知を表示
+        toastMessage = `「${record.productName}」を削除しました`;
+        toastType = 'success';
+        showToast = true;
+        
+        // 親コンポーネントにも削除を通知（統計更新のため）
+        dispatch('deleteRecord', { record });
+      } else {
+        toastMessage = `削除に失敗しました: ${result.error}`;
+        toastType = 'error';
+        showToast = true;
+      }
+    } catch (error) {
+      toastMessage = `削除中にエラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`;
+      toastType = 'error';
+      showToast = true;
+    } finally {
+      isDeleting = false;
+    }
   }
 
   // 県が変更されたときに記録を読み込み
@@ -162,6 +198,19 @@
             <div class="records-list">
               {#each prefectureRecords as record (record.id)}
                 <div class="record-item">
+                  {#if record.productUrl}
+                    <div class="record-image-small">
+                      <img 
+                        src={record.productUrl} 
+                        alt={record.productName}
+                        class="small-product-image"
+                        loading="lazy"
+                        onerror={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  {/if}
                   <div class="record-info">
                     <div class="record-name">{record.productName}</div>
                     <div class="record-date">{record.orderDate.toLocaleDateString('ja-JP')}</div>
@@ -184,6 +233,7 @@
                       class="btn-action btn-edit"
                       onclick={() => handleEditRecord(record)}
                       title="編集"
+                      disabled={isDeleting}
                     >
                       ✏️
                     </button>
@@ -191,8 +241,13 @@
                       class="btn-action btn-delete"
                       onclick={() => handleDeleteRecord(record)}
                       title="削除"
+                      disabled={isDeleting}
                     >
-                      🗑️
+                      {#if isDeleting}
+                        ⏳
+                      {:else}
+                        🗑️
+                      {/if}
                     </button>
                   </div>
                 </div>
@@ -221,6 +276,12 @@
     </div>
   </div>
 {/if}
+
+<ToastNotification 
+  message={toastMessage} 
+  type={toastType} 
+  bind:visible={showToast} 
+/>
 
 <style>
   .modal-backdrop {
@@ -443,6 +504,76 @@
   .btn-secondary:hover {
     background: var(--neutral-300);
     color: var(--neutral-900);
+  }
+
+  .record-image-small {
+    flex-shrink: 0;
+    margin-right: 12px;
+  }
+
+  .small-product-image {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .record-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .record-details {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 0.85rem;
+  }
+
+  .price {
+    color: #2e7d32;
+    font-weight: 500;
+  }
+
+  .record-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .btn-action {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+
+  .btn-action:hover:not(:disabled) {
+    background: #e0e0e0;
+  }
+
+  .btn-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .btn-edit:hover:not(:disabled) {
+    background: #e3f2fd;
+    border-color: #2196f3;
+  }
+
+  .btn-delete:hover:not(:disabled) {
+    background: #ffebee;
+    border-color: #f44336;
   }
 
   /* モバイル対応 */
