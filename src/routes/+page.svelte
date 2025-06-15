@@ -6,9 +6,11 @@
   import GourmetRecordForm from '$lib/components/GourmetRecordForm.svelte';
   import GourmetRecordList from '$lib/components/GourmetRecordList.svelte';
   import DeleteConfirmDialog from '$lib/components/DeleteConfirmDialog.svelte';
+  import ToastNotification from '$lib/components/ToastNotification.svelte';
   import { getAllPrefectureData, type PrefectureData, type GourmetRecord } from '$lib/data/mockData';
   import { testFirestoreConnection, deleteGourmetRecord, getPrefectureStats, initializeFirebase } from '$lib/firebase/firestore';
   import type { PrefectureStats } from '$lib/firebase/types';
+  import { getPlatformInfo } from '$lib/utils/linkOpener';
 
   // 基本の都道府県データ（テンプレート）
   let basePrefectureData = getAllPrefectureData();
@@ -29,6 +31,9 @@
   let testingConnection = $state(false);
   let connectionResult = $state<{success: boolean, error?: string} | null>(null);
   let isDeleting = $state(false);
+  let toastMessage = $state('');
+  let toastType = $state<'success' | 'error' | 'info'>('success');
+  let showToast = $state(false);
   
   // 統計データの読み込み状態
   let isLoadingStats = $state(false);
@@ -212,6 +217,12 @@
 
   function handleRecordAdded(event: CustomEvent<{ record: any }>) {
     console.log('新しい記録が追加されました:', event.detail.record);
+    
+    // 成功通知を表示
+    toastMessage = `「${event.detail.record.productName}」を追加しました`;
+    toastType = 'success';
+    showToast = true;
+    
     // 統計データを更新してヒートマップに反映
     loadPrefectureStats();
     isRecordFormOpen = false;
@@ -235,6 +246,12 @@
 
   function handleRecordUpdated(event: CustomEvent<{ record: any }>) {
     console.log('記録が更新されました:', event.detail.record);
+    
+    // 成功通知を表示
+    toastMessage = `「${event.detail.record.productName}」を更新しました`;
+    toastType = 'success';
+    showToast = true;
+    
     // 統計データを更新してヒートマップに反映
     loadPrefectureStats();
     isRecordFormOpen = false;
@@ -242,7 +259,18 @@
   }
 
   function handleDeleteRecord(event: CustomEvent<{ record: GourmetRecord }>) {
-    deletingRecord = event.detail.record;
+    // 都道府県モーダルから直接削除された場合は統計のみ更新
+    // 他のリスト画面からの場合は削除確認ダイアログを表示
+    const record = event.detail.record;
+    
+    // PrefectureModalからの削除の場合は統計更新のみ
+    if (isModalOpen) {
+      loadPrefectureStats(); // ヒートマップ更新
+      return;
+    }
+    
+    // 他の画面からの削除確認
+    deletingRecord = record;
     isDeleteDialogOpen = true;
   }
 
@@ -256,6 +284,12 @@
       
       if (result.success) {
         console.log('記録が削除されました:', deletingRecord.productName);
+        
+        // 成功通知を表示
+        toastMessage = `「${deletingRecord.productName}」を削除しました`;
+        toastType = 'success';
+        showToast = true;
+        
         // 統計データを更新してヒートマップに反映
         loadPrefectureStats();
         isDeleteDialogOpen = false;
@@ -270,11 +304,15 @@
         }
       } else {
         console.error('削除に失敗しました:', result.error);
-        alert(`削除に失敗しました: ${result.error}`);
+        toastMessage = `削除に失敗しました: ${result.error}`;
+        toastType = 'error';
+        showToast = true;
       }
     } catch (error) {
       console.error('削除エラー:', error);
-      alert(`削除中にエラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+      toastMessage = `削除中にエラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`;
+      toastType = 'error';
+      showToast = true;
     } finally {
       isDeleting = false;
     }
@@ -312,6 +350,15 @@
     } finally {
       testingConnection = false;
     }
+  }
+
+  function handlePlatformTest() {
+    const platformInfo = getPlatformInfo();
+    alert(`プラットフォーム情報:
+Platform: ${platformInfo.platform}
+Tauri: ${platformInfo.isTauri ? 'Yes' : 'No'}
+Touch: ${platformInfo.isTouch ? 'Yes' : 'No'}
+UserAgent: ${platformInfo.userAgent}`);
   }
 
   // 統計情報の計算
@@ -387,6 +434,9 @@
         {#if debugMode}
           <button class="btn {connectionResult?.success ? 'btn-success' : 'btn-warning'}" onclick={handleFirebaseTest} disabled={testingConnection}>
             {testingConnection ? '🔄 テスト中...' : '🔥 Firebase接続テスト'}
+          </button>
+          <button class="btn btn-info" onclick={handlePlatformTest}>
+            🔍 プラットフォーム情報
           </button>
           {#if connectionResult}
             <div class="connection-result {connectionResult.success ? 'success' : 'error'}">
@@ -465,6 +515,12 @@
     isDeleting={isDeleting}
     on:confirm={handleDeleteConfirm}
     on:cancel={handleDeleteCancel}
+  />
+
+  <ToastNotification 
+    message={toastMessage} 
+    type={toastType} 
+    bind:visible={showToast} 
   />
 </main>
 
@@ -721,6 +777,17 @@
     background: linear-gradient(135deg, #388E3C 0%, #2E7D32 100%);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  }
+
+  .btn-info {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: var(--white);
+  }
+
+  .btn-info:hover {
+    background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
   }
 
   .connection-result {

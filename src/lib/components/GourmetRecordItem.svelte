@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { GourmetRecord } from '../data/mockData';
   import { getAllPrefectureData } from '../data/mockData';
+  import { openExternalLink } from '../utils/linkOpener';
 
   let { record }: { record: GourmetRecord } = $props();
 
@@ -43,6 +44,14 @@
     if (confirm(`「${record.productName}」の記録を削除しますか？`)) {
       dispatch('delete');
     }
+  }
+
+  async function handleLinkClick(url: string, type: 'shop' | 'image') {
+    const fallbackMessage = type === 'shop' 
+      ? '商品ページのリンクをクリップボードにコピーしました' 
+      : '商品画像のリンクをクリップボードにコピーしました';
+    
+    await openExternalLink(url, `${fallbackMessage}:\n${url}\n\nブラウザで手動で開いてください。`);
   }
 </script>
 
@@ -132,14 +141,14 @@
   <div class="record-footer">
     <div class="record-links">
       {#if record.shopUrl}
-        <a href={record.shopUrl} target="_blank" rel="noopener noreferrer" class="link-btn">
+        <button class="link-btn" onclick={() => handleLinkClick(record.shopUrl, 'shop')}>
           🔗 商品ページ
-        </a>
+        </button>
       {/if}
       {#if record.productUrl}
-        <a href={record.productUrl} target="_blank" rel="noopener noreferrer" class="link-btn">
+        <button class="link-btn" onclick={() => handleLinkClick(record.productUrl, 'image')}>
           🖼️ 商品画像
-        </a>
+        </button>
       {/if}
     </div>
     <div class="record-dates">
@@ -362,12 +371,15 @@
   }
 
   .link-btn {
+    background: none;
+    border: none;
     color: var(--primary-color);
-    text-decoration: none;
     font-size: 0.85rem;
     padding: 4px 8px;
     border-radius: 4px;
     transition: background-color 0.2s;
+    cursor: pointer;
+    text-decoration: none;
   }
 
   .link-btn:hover {
