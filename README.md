@@ -151,7 +151,7 @@ npm run tauri android build
 
 ## 🔧 開発環境
 
-### 📝 推奨エディタ設定
+### 📝 推奨エディター設定
 [VS Code](https://code.visualstudio.com/) + 以下の拡張機能:
 - [Svelte for VS Code](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode)
 - [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode)
@@ -181,7 +181,7 @@ GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here
 
 ### 🔥 Firebase設定
 
-1. [Firebase Console](https://console.firebase.google.com/) でプロジェクト作成
+1. [Firebase Console](https://console.firebase.google.com/)でプロジェクト作成
 2. Firestore Database を有効化
 3. 認証を無効化（個人利用のため）
 4. 環境変数に設定情報を追加
@@ -240,7 +240,7 @@ gourmet_journey_jp/
 ### 🎨 デザインシステム
 - **カラーパレット**: 暖色系グラデーション
 - **フォント**: Noto Sans JP
-- **レスポンシブ**: Desktop-first, Mobile-optimized
+- **レスポンシブ**: Desktop-first、Mobile-optimized
 - **アクセシビリティ**: ARIA属性, キーボード操作対応
 
 ### 📱 画面構成
@@ -338,7 +338,7 @@ npm run firebase:emulators
 [GitHub Issues](https://github.com/rmc8/gourmet_journey_jp/issues) で報告してください。
 
 ### 💡 機能提案
-新機能の提案は Issue でディスカッションしてから実装してください。
+新機能の提案はIssueでディスカッションしてから実装してください。
 
 ### 🔄 開発フロー
 1. **Issue作成**: 機能・バグの詳細説明
