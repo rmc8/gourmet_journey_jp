@@ -24,6 +24,14 @@ android {
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
+    signingConfigs {
+        create("release") {
+            keyAlias = System.getenv("KEYSTORE_ALIAS") ?: "gourmet-journey-jp"
+            keyPassword = System.getenv("KEYSTORE_KEY_PASSWORD") ?: "gourmet123"
+            storeFile = file("../../../gourmet-journey-jp.keystore")
+            storePassword = System.getenv("KEYSTORE_STORE_PASSWORD") ?: "gourmet123"
+        }
+    }
     buildTypes {
         getByName("debug") {
             manifestPlaceholders["usesCleartextTraffic"] = "true"
@@ -38,6 +46,7 @@ android {
         }
         getByName("release") {
             isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }
                     .plus(getDefaultProguardFile("proguard-android-optimize.txt"))
