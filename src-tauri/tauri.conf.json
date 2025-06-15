@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "gourmet_journey_jp",
-  "version": "0.1.0",
-  "identifier": "com.gourmet_journey_jp.app",
+  "version": "1.0.0",
+  "identifier": "com.gourmet-journey-jp.app",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -33,5 +33,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "active": false
+    }
   }
 }
