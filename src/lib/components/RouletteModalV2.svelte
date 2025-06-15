@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
   import type { PrefectureData } from '../data/mockData';
   import { generatePerplexitySearchUrl } from '../utils/searchUtils';
 
@@ -20,12 +21,55 @@
     prefectureData = []
   }: Props = $props();
 
+  const dispatch = createEventDispatcher<{
+    prefectureSelected: { prefecture: PrefectureData };
+  }>();
+
   // ルーレット状態管理
   let isSpinning = $state(false);
   let currentDisplayPrefecture = $state<PrefectureData | null>(null);
   let result = $state<RouletteResult | null>(null);
   let animationIndex = $state(0);
   let animationSequence = $state<PrefectureData[]>([]);
+
+  // スクロールバー完全制御（モーダル内部も含む）
+  $effect(() => {
+    const modalElement = document.querySelector('.modal-content');
+    
+    if (isOpen && isSpinning) {
+      // 抽選中：ページとモーダル両方のスクロール無効化
+      document.body.style.overflow = 'hidden';
+      if (modalElement) {
+        modalElement.classList.add('spinning-mode');
+      }
+    } else {
+      // 抽選終了：スクロール復元
+      document.body.style.overflow = '';
+      if (modalElement) {
+        modalElement.classList.remove('spinning-mode');
+      }
+    }
+
+    // クリーンアップ関数：確実な復元
+    return () => {
+      document.body.style.overflow = '';
+      if (modalElement) {
+        modalElement.classList.remove('spinning-mode');
+      }
+    };
+  });
+
+  // モーダル閉鎖時の追加クリーンアップ
+  $effect(() => {
+    if (!isOpen) {
+      // モーダル閉鎖時：確実にスクロールバーとクラスを復元
+      document.body.style.overflow = '';
+      const modalElement = document.querySelector('.modal-content');
+      if (modalElement) {
+        modalElement.classList.remove('spinning-mode');
+      }
+    }
+  });
 
   // アニメーション設定
   const ANIMATION_DURATION = 2000; // 2秒
@@ -170,17 +214,8 @@
   function showOnMap() {
     if (!result) return;
     
-    // 親コンポーネントに通知するためのイベント発火
-    const event = new CustomEvent('prefectureSelected', {
-      detail: { prefecture: result.selected },
-      bubbles: true
-    });
-    
-    // モーダルのDOM要素からイベントを発火
-    const modalElement = document.querySelector('.modal-backdrop');
-    if (modalElement) {
-      modalElement.dispatchEvent(event);
-    }
+    // Svelteのdispatcherを使用してイベント発火
+    dispatch('prefectureSelected', { prefecture: result.selected });
     
     handleClose();
   }
@@ -222,7 +257,7 @@
 {#if isOpen}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div 
-    class="modal-backdrop" 
+    class="modal-backdrop {isSpinning ? 'spinning-active' : ''}" 
     role="dialog" 
     aria-modal="true"
     onclick={handleBackdropClick}
@@ -347,9 +382,26 @@
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
     width: 100%;
     max-width: 500px;
-    max-height: 90vh;
+    max-height: 95vh;
     overflow-y: auto;
     animation: modalSlideIn 0.3s ease-out;
+  }
+
+  /* ルーレット中のスクロール完全無効化 */
+  .modal-content.spinning-mode {
+    overflow: hidden !important;
+    max-height: none;
+    height: auto;
+  }
+
+  /* 緊急時多重制御（backup） */
+  .modal-backdrop.spinning-active {
+    overflow: hidden;
+  }
+  
+  .modal-backdrop.spinning-active .modal-content {
+    overflow: hidden !important;
+    max-height: none !important;
   }
 
   @keyframes modalSlideIn {
@@ -404,7 +456,7 @@
   }
 
   .modal-body {
-    padding: 28px;
+    padding: 20px;
   }
 
   /* 開始前セクション */
@@ -443,9 +495,16 @@
     align-items: center;
   }
 
-  /* スピニングセクション */
+  /* スピニングセクション - レイアウト安定化 */
   .spinning-section {
     text-align: center;
+    min-height: 220px;
+    max-height: 220px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
   }
 
   .spinner-icon {
@@ -476,11 +535,14 @@
 
   .prefecture-display.spinning {
     animation: pulse 0.5s ease-in-out infinite alternate;
+    transform-origin: center;
+    contain: layout style;
+    will-change: transform;
   }
 
   @keyframes pulse {
     from { transform: scale(1); }
-    to { transform: scale(1.05); }
+    to { transform: scale(1.02); }
   }
 
   .loading-bar {
@@ -551,7 +613,7 @@
 
   .stats-info {
     margin: 1.5rem 0;
-    padding: 1rem;
+    padding: 0.8rem;
     background: #f8f9fa;
     border-radius: 8px;
   }
@@ -569,7 +631,7 @@
 
   /* 検索セクション */
   .search-section {
-    margin: 2rem 0;
+    margin: 1.5rem 0;
   }
 
   .search-section h4 {
@@ -621,7 +683,7 @@
   .action-section {
     display: flex;
     gap: 0.75rem;
-    margin-top: 2rem;
+    margin-top: 1.5rem;
   }
 
   /* ボタンスタイル */
@@ -676,7 +738,30 @@
   @media (max-width: 768px) {
     .modal-content {
       margin: 10px;
-      max-height: calc(100vh - 20px);
+      max-height: calc(100vh - 10px);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+    }
+
+    .modal-body {
+      padding: 16px;
+    }
+
+    .stats-info {
+      padding: 0.6rem;
+      margin: 1rem 0;
+    }
+
+    .search-section,
+    .action-section {
+      margin: 1rem 0;
+    }
+
+    .spinning-section {
+      min-height: 180px;
+      max-height: 180px;
     }
 
     .prefecture-display {
