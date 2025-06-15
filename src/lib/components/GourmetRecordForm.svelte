@@ -477,6 +477,24 @@
             placeholder="https://example.com/images/product.jpg"
             disabled={isSubmitting}
           />
+          {#if formData.productUrl.trim()}
+            <div class="image-preview">
+              <img 
+                src={formData.productUrl} 
+                alt="商品画像プレビュー"
+                class="preview-image"
+                loading="lazy"
+                onerror={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling.style.display = 'flex';
+                }}
+              />
+              <div class="preview-error" style="display: none;">
+                <span class="error-icon">⚠️</span>
+                <span class="error-text">画像を読み込めません</span>
+              </div>
+            </div>
+          {/if}
         </div>
 
         <!-- メモ -->
@@ -723,6 +741,42 @@
 
   .rating-reset:hover:not(:disabled) {
     background-color: #f5f5f5;
+  }
+
+  .image-preview {
+    margin-top: 12px;
+    text-align: center;
+  }
+
+  .preview-image {
+    max-width: 100%;
+    max-height: 150px;
+    width: auto;
+    height: auto;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+  }
+
+  .preview-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 6px;
+    color: #856404;
+  }
+
+  .preview-error .error-icon {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+  }
+
+  .preview-error .error-text {
+    font-size: 0.85rem;
   }
 
   .modal-footer {
