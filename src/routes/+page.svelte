@@ -323,8 +323,13 @@
 
 <main class="app-container">
   <header class="app-header">
-    <button class="app-title" onclick={handleTitleClick} onkeydown={handleTitleKeyDown}>グルメジャーニー</button>
-    <p class="app-subtitle">全国47都道府県のご当地グルメお取り寄せ管理</p>
+    <div class="header-top">
+      <img src="/logo/logo.png" alt="グルメジャーニー" class="app-logo" />
+      <div class="title-section">
+        <button class="app-title" onclick={handleTitleClick} onkeydown={handleTitleKeyDown}>グルメジャーニー</button>
+        <p class="app-subtitle">全国47都道府県のご当地グルメお取り寄せ管理</p>
+      </div>
+    </div>
     
     {#if debugMode}
       <div class="debug-indicator">
@@ -479,6 +484,33 @@
     box-shadow: 0 4px 20px var(--shadow-primary);
   }
 
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .app-logo {
+    height: 60px;
+    width: auto;
+    border-radius: 8px;
+    transition: transform 0.3s ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+
+  .app-logo:hover {
+    transform: scale(1.05);
+  }
+
+  .title-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
   .app-title {
     margin: 0 0 0.5rem 0;
     font-size: 2.5rem;
@@ -523,7 +555,7 @@
   }
 
   .app-subtitle {
-    margin: 0 0 2rem 0;
+    margin: 0;
     font-size: 1.1rem;
     opacity: 0.9;
   }
@@ -772,6 +804,21 @@
   @media (max-width: 768px) {
     .app-header {
       padding: 1.5rem;
+    }
+
+    .header-top {
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .app-logo {
+      height: 50px;
+    }
+
+    .title-section {
+      align-items: center;
+      text-align: center;
     }
 
     .app-title {
