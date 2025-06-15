@@ -37,7 +37,7 @@
   // デバッグモード管理
   let debugMode = $state(false);
   let titleClickCount = $state(0);
-  let titleClickTimer: number | null = null;
+  let titleClickTimer: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * Firestore から都道府県別統計を取得してヒートマップデータを更新
@@ -132,6 +132,16 @@
     titleClickTimer = setTimeout(() => {
       titleClickCount = 0;
     }, 2000);
+  }
+
+  /**
+   * タイトルキーボード操作
+   */
+  function handleTitleKeyDown(event: KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleTitleClick();
+    }
   }
 
   /**
@@ -313,7 +323,7 @@
 
 <main class="app-container">
   <header class="app-header">
-    <h1 class="app-title" onclick={handleTitleClick} role="button" tabindex="0">グルメジャーニー</h1>
+    <button class="app-title" onclick={handleTitleClick} onkeydown={handleTitleKeyDown}>グルメジャーニー</button>
     <p class="app-subtitle">全国47都道府県のご当地グルメお取り寄せ管理</p>
     
     {#if debugMode}
@@ -438,13 +448,11 @@
     on:deleteRecord={handleDeleteRecord}
   />
 
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div onprefectureSelected={handleRouletteResult}>
-    <RouletteModalV2 
-      bind:isOpen={isRouletteOpen}
-      {prefectureData}
-    />
-  </div>
+  <RouletteModalV2 
+    bind:isOpen={isRouletteOpen}
+    {prefectureData}
+    on:prefectureSelected={handleRouletteResult}
+  />
 
   <DeleteConfirmDialog 
     bind:isOpen={isDeleteDialogOpen}
@@ -479,6 +487,12 @@
     cursor: pointer;
     transition: all 0.2s ease;
     user-select: none;
+    /* ボタン要素のデフォルトスタイルをリセット */
+    background: transparent;
+    border: none;
+    color: var(--white);
+    padding: 0;
+    font-family: inherit;
   }
 
   .app-title:hover {
@@ -629,18 +643,6 @@
     box-shadow: 0 4px 12px rgba(255, 143, 0, 0.3);
   }
 
-  .btn-secondary {
-    background: var(--neutral-200);
-    color: var(--neutral-800);
-    border: 1px solid var(--neutral-300);
-  }
-
-  .btn-secondary:hover {
-    background: var(--neutral-300);
-    color: var(--neutral-900);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px var(--shadow-neutral);
-  }
 
   .btn-secondary-warm {
     background: linear-gradient(135deg, #FFAB40 0%, #FF8F00 100%);
