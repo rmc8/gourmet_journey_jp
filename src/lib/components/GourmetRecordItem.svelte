@@ -103,6 +103,25 @@
       {/if}
     </div>
 
+    {#if record.productUrl}
+      <div class="record-image">
+        <img 
+          src={record.productUrl} 
+          alt={record.productName}
+          class="product-image"
+          loading="lazy"
+          onerror={(e) => {
+            e.currentTarget.style.display = 'none';
+            e.currentTarget.nextElementSibling.style.display = 'flex';
+          }}
+        />
+        <div class="image-error" style="display: none;">
+          <span class="error-icon">🖼️</span>
+          <span class="error-text">画像を読み込めませんでした</span>
+        </div>
+      </div>
+    {/if}
+
     {#if record.memo}
       <div class="record-memo">
         <p class="memo-text">{record.memo}</p>
@@ -284,6 +303,47 @@
     font-size: 0.9rem;
     color: #555;
     line-height: 1.4;
+  }
+
+  .record-image {
+    margin-bottom: 12px;
+    text-align: center;
+  }
+
+  .product-image {
+    max-width: 100%;
+    max-height: 200px;
+    width: auto;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+  }
+
+  .product-image:hover {
+    transform: scale(1.02);
+    cursor: pointer;
+  }
+
+  .image-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    color: #666;
+  }
+
+  .error-icon {
+    font-size: 2rem;
+    margin-bottom: 8px;
+  }
+
+  .error-text {
+    font-size: 0.9rem;
   }
 
   .record-footer {

@@ -162,6 +162,19 @@
             <div class="records-list">
               {#each prefectureRecords as record (record.id)}
                 <div class="record-item">
+                  {#if record.productUrl}
+                    <div class="record-image-small">
+                      <img 
+                        src={record.productUrl} 
+                        alt={record.productName}
+                        class="small-product-image"
+                        loading="lazy"
+                        onerror={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  {/if}
                   <div class="record-info">
                     <div class="record-name">{record.productName}</div>
                     <div class="record-date">{record.orderDate.toLocaleDateString('ja-JP')}</div>
@@ -443,6 +456,19 @@
   .btn-secondary:hover {
     background: var(--neutral-300);
     color: var(--neutral-900);
+  }
+
+  .record-image-small {
+    flex-shrink: 0;
+    margin-right: 12px;
+  }
+
+  .small-product-image {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   /* モバイル対応 */
