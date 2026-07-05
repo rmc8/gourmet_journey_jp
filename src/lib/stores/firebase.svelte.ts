@@ -4,6 +4,7 @@
  */
 
 import { initializeFirebase, isFirebaseConfigured } from '../firebase';
+import { logger } from '../utils/logger';
 
 // Firebase初期化状態（モジュール内でのみ管理）
 let firebaseInitialized = $state(false);
@@ -26,17 +27,17 @@ export async function initializeFirebaseApp(): Promise<boolean> {
     
     if (result.success) {
       firebaseInitialized = true;
-      console.log('✅ Firebase初期化成功');
+      logger.log('✅ Firebase初期化成功');
       return true;
     } else {
       firebaseError = result.error || 'Firebase初期化に失敗しました';
-      console.error('❌ Firebase初期化失敗:', firebaseError);
+      logger.error('❌ Firebase初期化失敗:', firebaseError);
       return false;
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : '不明なエラー';
     firebaseError = `Firebase初期化エラー: ${errorMessage}`;
-    console.error('❌ Firebase初期化例外:', errorMessage);
+    logger.error('❌ Firebase初期化例外:', errorMessage);
     return false;
   } finally {
     firebaseLoading = false;

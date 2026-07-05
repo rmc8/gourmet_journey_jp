@@ -33,6 +33,7 @@ import type {
   PrefectureStats,
 } from './types';
 import { FIRESTORE_COLLECTIONS } from './types';
+import { logger } from '../utils/logger';
 
 /**
  * タイムアウト付きでPromiseを実行
@@ -70,19 +71,19 @@ export async function initializeFirebase(): Promise<FirestoreResult<boolean>> {
     if (import.meta.env.DEV && !isFirebaseConfigured()) {
       try {
         connectFirestoreEmulator(db, 'localhost', 8080);
-        console.log('🔧 Firestore エミュレーターに接続しました');
+        logger.log('🔧 Firestore エミュレーターに接続しました');
       } catch (error) {
-        console.warn('⚠️ Firestore エミュレーターに接続できませんでした:', error);
+        logger.warn('⚠️ Firestore エミュレーターに接続できませんでした:', error);
       }
     }
 
     isInitialized = true;
-    console.log('✅ Firebase初期化完了');
+    logger.log('✅ Firebase初期化完了');
     
     return { success: true, data: true };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : '不明なエラー';
-    console.error('❌ Firebase初期化エラー:', errorMessage);
+    logger.error('❌ Firebase初期化エラー:', errorMessage);
     return { success: false, error: `Firebase初期化に失敗しました: ${errorMessage}` };
   }
 }

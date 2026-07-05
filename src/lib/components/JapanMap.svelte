@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { PrefectureData } from '../data/mockData';
   import { getHeatmapColor, getHoverColor, getSelectedColor } from '../utils/heatmapColors';
+  import { logger } from '../utils/logger';
 
   interface Props {
     prefectureData: PrefectureData[];
@@ -38,7 +39,7 @@
   }
 
   function handlePrefectureClick(prefecture: PrefectureData) {
-    console.log('🗺️ 都道府県がクリックされました:', prefecture.name);
+    logger.log('🗺️ 都道府県がクリックされました:', prefecture.name);
     selectedPrefecture = prefecture.id;
     onPrefectureClick?.(prefecture);
     
@@ -87,8 +88,8 @@
 
   onMount(async () => {
     try {
-      console.log('🗾 日本地図の読み込み開始...');
-      console.log('📊 prefectureData:', prefectureData);
+      logger.log('🗾 日本地図の読み込み開始...');
+      logger.log('📊 prefectureData:', prefectureData);
       
       // Load the SVG content from local file first, fallback to external URL
       let response: Response;
@@ -97,14 +98,14 @@
         if (!response.ok) {
           throw new Error(`Local SVG not found: ${response.status}`);
         }
-        console.log('✅ ローカルSVGファイルを読み込みました');
+        logger.log('✅ ローカルSVGファイルを読み込みました');
       } catch (localError) {
-        console.warn('⚠️ ローカルSVGの読み込みに失敗、外部URLを試行:', localError);
+        logger.warn('⚠️ ローカルSVGの読み込みに失敗、外部URLを試行:', localError);
         response = await fetch('https://raw.githubusercontent.com/geolonia/japanese-prefectures/master/map-mobile.svg');
         if (!response.ok) {
           throw new Error(`External SVG fetch failed: ${response.status}`);
         }
-        console.log('✅ 外部SVGファイルを読み込みました');
+        logger.log('✅ 外部SVGファイルを読み込みました');
       }
       
       const svgContent = await response.text();
@@ -115,11 +116,11 @@
       
       // Insert the SVG content
       svgContainer.innerHTML = svgContent;
-      console.log('✅ SVGコンテンツを挿入しました');
+      logger.log('✅ SVGコンテンツを挿入しました');
       
       // 既存の都道府県要素を準備
       const prefectureElements = svgContainer.querySelectorAll('[data-code]');
-      console.log(`🏷️ 都道府県要素を${prefectureElements.length}個発見しました`);
+      logger.log(`🏷️ 都道府県要素を${prefectureElements.length}個発見しました`);
       
       // 各要素にスタイルとアクセシビリティ属性を設定
       prefectureElements.forEach((element) => {
@@ -154,7 +155,7 @@
             if (prefecture) {
               e.preventDefault();
               e.stopPropagation();
-              console.log('🎯 イベント委譲でキャッチ:', prefecture.name, 'イベントタイプ:', e.type);
+              logger.log('🎯 イベント委譲でキャッチ:', prefecture.name, 'イベントタイプ:', e.type);
               handlePrefectureClick(prefecture);
             }
           }
@@ -186,14 +187,14 @@
         handlePrefectureMouseLeave();
       });
       
-      console.log('🎨 イベント委譲パターンを設定しました');
+      logger.log('🎨 イベント委譲パターンを設定しました');
       
       // Apply initial styles
       updatePrefectureStyles();
-      console.log('🎨 初期スタイルを適用しました');
+      logger.log('🎨 初期スタイルを適用しました');
       
     } catch (error) {
-      console.error('❌ 日本地図の読み込みに失敗:', error);
+      logger.error('❌ 日本地図の読み込みに失敗:', error);
       
       // Fallback: 簡単な都道府県リスト表示
       const fallbackHtml = `

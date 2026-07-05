@@ -1,19 +1,19 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { logger } from './logger';
 
 /**
  * プラットフォーム検出
  */
 function getPlatform(): 'tauri' | 'web' | 'mobile' {
   // デバッグ情報をコンソールに出力
-  console.log('🔍 プラットフォーム検出開始...');
-  console.log('window.__TAURI__:', typeof window !== 'undefined' ? window.__TAURI__ : 'undefined');
-  console.log('window.__TAURI_INTERNALS__:', typeof window !== 'undefined' ? (window as any).__TAURI_INTERNALS__ : 'undefined');
+  logger.log('🔍 プラットフォーム検出開始...');
+  logger.log('window.__TAURI__:', typeof window !== 'undefined' ? typeof window.__TAURI__ : 'undefined');
   
   // Tauriアプリケーション内かどうか確認（複数の方法で検出）
   if (typeof window !== 'undefined') {
     // 主要なTauri検出方法
     if (window.__TAURI__ || (window as any).__TAURI_INTERNALS__) {
-      console.log('✅ Tauriプラットフォーム検出');
+      logger.log('✅ Tauriプラットフォーム検出');
       return 'tauri';
     }
     
@@ -21,7 +21,7 @@ function getPlatform(): 'tauri' | 'web' | 'mobile' {
     if (typeof navigator !== 'undefined') {
       const userAgent = navigator.userAgent.toLowerCase();
       if (userAgent.includes('tauri')) {
-        console.log('✅ UserAgentからTauriプラットフォーム検出');
+        logger.log('✅ UserAgentからTauriプラットフォーム検出');
         return 'tauri';
       }
     }
@@ -31,12 +31,12 @@ function getPlatform(): 'tauri' | 'web' | 'mobile' {
   if (typeof navigator !== 'undefined') {
     const userAgent = navigator.userAgent.toLowerCase();
     if (/android|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(userAgent)) {
-      console.log('📱 モバイルプラットフォーム検出');
+      logger.log('📱 モバイルプラットフォーム検出');
       return 'mobile';
     }
   }
   
-  console.log('🌐 Webプラットフォーム検出');
+  logger.log('🌐 Webプラットフォーム検出');
   return 'web';
 }
 
@@ -47,38 +47,46 @@ function getPlatform(): 'tauri' | 'web' | 'mobile' {
  */
 export async function openExternalLink(url: string, fallbackMessage?: string): Promise<void> {
   const platform = getPlatform();
-  console.log(`🔗 外部リンクを開きます: ${url} (Platform: ${platform})`);
+  
+  // セキュリティ対策: URLからクエリパラメータやパスを排してホスト名のみをログ出力する
+  let safeUrlStr = 'unknown';
+  try {
+    safeUrlStr = new URL(url).hostname;
+  } catch (_) {
+    // パースに失敗した場合はそのまま非公開
+  }
+  logger.log(`🔗 外部リンクを開きます: ${safeUrlStr} (Platform: ${platform})`);
   
   try {
     switch (platform) {
       case 'tauri':
         // Tauri デスクトップアプリ (Mac, Windows, Linux)
-        console.log('🚀 Tauri openUrl() を使用してリンクを開きます');
+        logger.log('🚀 Tauri openUrl() を使用してリンクを開きます');
         await openUrl(url);
-        console.log('✅ Tauri openUrl() 成功');
+        logger.log('✅ Tauri openUrl() 成功');
         break;
         
       case 'mobile':
         // モバイルブラウザ (iOS Safari, Android Chrome等)
         // モバイルではポップアップブロッカーが厳しいため、直接リンク開く
-        console.log('📱 モバイル: window.location.href でリンクを開きます');
+        logger.log('📱 モバイル: window.location.href でリンクを開きます');
         window.location.href = url;
         break;
         
       case 'web':
       default:
         // Webブラウザ (デスクトップ) または Tauri検出失敗時のフォールバック
-        console.log('🌐 Web: window.open() でリンクを開きます');
+        logger.log('🌐 Web: window.open() でリンクを開きます');
         
         // Tauri検出に失敗した可能性があるため、openUrl()も試す
         if (typeof window !== 'undefined' && window.__TAURI__) {
-          console.log('🔄 Tauri検出リトライ: openUrl() を試行');
+          logger.log('🔄 Tauri検出リトライ: openUrl() を試行');
           try {
             await openUrl(url);
-            console.log('✅ リトライ成功: Tauri openUrl() で開きました');
+            logger.log('✅ リトライ成功: Tauri openUrl() で開きました');
             return;
           } catch (tauriError) {
-            console.warn('⚠️ Tauri openUrl() リトライ失敗:', tauriError);
+            logger.warn('⚠️ Tauri openUrl() リトライ失敗:', tauriError);
           }
         }
         
@@ -87,11 +95,11 @@ export async function openExternalLink(url: string, fallbackMessage?: string): P
         if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
           throw new Error('ポップアップがブロックされました');
         }
-        console.log('✅ window.open() 成功');
+        logger.log('✅ window.open() 成功');
         break;
     }
   } catch (error) {
-    console.warn('❌ 外部リンクを開けませんでした:', error);
+    logger.warn('❌ 外部リンクを開けませんでした:', error);
     
     // フォールバック処理
     try {
@@ -108,7 +116,7 @@ export async function openExternalLink(url: string, fallbackMessage?: string): P
       }
     } catch (clipboardError) {
       // 最終フォールバック
-      console.error('クリップボードコピーも失敗:', clipboardError);
+      logger.error('クリップボードコピーも失敗:', clipboardError);
       alert(`外部リンクを開けませんでした。手動でアクセスしてください:\n${url}`);
     }
   }

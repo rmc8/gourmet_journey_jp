@@ -11,6 +11,7 @@
   import { testFirestoreConnection, deleteGourmetRecord, getPrefectureStats, initializeFirebase } from '$lib/firebase/firestore';
   import type { PrefectureStats } from '$lib/firebase/types';
   import { getPlatformInfo } from '$lib/utils/linkOpener';
+  import { logger } from '$lib/utils/logger';
 
   // 基本の都道府県データ（テンプレート）
   let basePrefectureData = getAllPrefectureData();
@@ -65,7 +66,7 @@
       }
 
       const statsData = statsResult.data;
-      console.log('📊 取得した統計データ:', statsData);
+      logger.log('📊 取得した統計データ:', statsData);
 
       // 基本データと統計データをマージして完全な都道府県データを作成
       prefectureData = basePrefectureData.map(baseData => {
@@ -83,10 +84,10 @@
         };
       });
 
-      console.log('🗺️ 更新されたヒートマップデータ:', prefectureData);
+      logger.log('🗺️ 更新されたヒートマップデータ:', prefectureData);
       
     } catch (error) {
-      console.error('❌ 統計データの読み込みエラー:', error);
+      logger.error('❌ 統計データの読み込みエラー:', error);
       statsError = error instanceof Error ? error.message : '不明なエラー';
       // エラー時は基本データを使用
       prefectureData = basePrefectureData.map(baseData => ({
@@ -112,7 +113,7 @@
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('gourmet-journey-debug', debugMode.toString());
     }
-    console.log(debugMode ? '🔧 デバッグモードを有効にしました' : '✅ デバッグモードを無効にしました');
+    logger.log(debugMode ? '🔧 デバッグモードを有効にしました' : '✅ デバッグモードを無効にしました');
   }
 
   /**
@@ -183,7 +184,7 @@
   });
 
   function handlePrefectureClick(prefecture: PrefectureData) {
-    console.log('📋 メインページで都道府県クリックを受信:', prefecture.name);
+    logger.log('📋 メインページで都道府県クリックを受信:', prefecture.name);
     selectedPrefecture = prefecture;
     isModalOpen = true;
   }
@@ -216,7 +217,7 @@
   }
 
   function handleRecordAdded(event: CustomEvent<{ record: any }>) {
-    console.log('新しい記録が追加されました:', event.detail.record);
+    logger.log('新しい記録が追加されました:', event.detail.record);
     
     // 成功通知を表示
     toastMessage = `「${event.detail.record.productName}」を追加しました`;
@@ -245,7 +246,7 @@
   }
 
   function handleRecordUpdated(event: CustomEvent<{ record: any }>) {
-    console.log('記録が更新されました:', event.detail.record);
+    logger.log('記録が更新されました:', event.detail.record);
     
     // 成功通知を表示
     toastMessage = `「${event.detail.record.productName}」を更新しました`;
@@ -283,7 +284,7 @@
       const result = await deleteGourmetRecord(deletingRecord.id);
       
       if (result.success) {
-        console.log('記録が削除されました:', deletingRecord.productName);
+        logger.log('記録が削除されました:', deletingRecord.productName);
         
         // 成功通知を表示
         toastMessage = `「${deletingRecord.productName}」を削除しました`;
@@ -303,13 +304,13 @@
           }, 100);
         }
       } else {
-        console.error('削除に失敗しました:', result.error);
+        logger.error('削除に失敗しました:', result.error);
         toastMessage = `削除に失敗しました: ${result.error}`;
         toastType = 'error';
         showToast = true;
       }
     } catch (error) {
-      console.error('削除エラー:', error);
+      logger.error('削除エラー:', error);
       toastMessage = `削除中にエラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`;
       toastType = 'error';
       showToast = true;
